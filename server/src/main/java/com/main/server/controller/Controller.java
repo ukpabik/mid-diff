@@ -1,5 +1,6 @@
 package com.main.server.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -90,7 +91,7 @@ public class Controller {
    * Performs a full account + match sync:
    *  Fetches Riot account info via Riot API
    *  Upserts the user in the Supabase DB
-   *  Triggers background match caching for the 20 most recent ranked matches
+   *  Triggers match caching for the 20 most recent ranked matches
    * 
    *
    * @param riotId the Riot game name
@@ -100,18 +101,24 @@ public class Controller {
   @GetMapping("/search/{riotId}/{tagLine}")
   public ResponseEntity<?> searchAndCache(@PathVariable String riotId, @PathVariable String tagLine) {
     try {
-      // 1) Get user from Riot
+      // Get user from Riot
       Player user = accountService.getUserById(riotId, tagLine);
-
-      // 2) Upsert into db
+      System.out.println(user);
+      // Upsert into db
       Player existing = databaseService.findByPuuid(user.getPuuid());
       if (existing == null) {
         databaseService.saveUser(user);
       } else {
         databaseService.updateUser(user);
       }
-      // 3) Fetch 20 recent match IDs
-      accountService.cacheMatchesAsync(user.getPuuid());
+      
+      // Fetch 20 recent match IDs (blocking)
+      List<String> ids = accountService.getRecentMatchIds(user.getPuuid(), "ranked", 20);
+
+      // Synchronously cache them
+      accountService.cacheMissingMatches(ids, user.getPuuid());
+
+      // Return the user (or data) after all matches are saved
       return ResponseEntity.ok(user);
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));

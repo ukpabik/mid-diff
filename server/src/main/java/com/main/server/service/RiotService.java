@@ -8,7 +8,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -37,7 +36,6 @@ public class RiotService {
   private MatchRepository matchRepository;
 
   private final ObjectMapper mapper = new ObjectMapper();
-  private final ExecutorService executor = Executors.newFixedThreadPool(4);
   
 
   /**
@@ -73,9 +71,9 @@ public class RiotService {
       }
     }
     con.disconnect();
-
     @SuppressWarnings("unchecked")
     Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
+    System.out.println(map);
     return Factory.mapToUser(map);
   }
 
@@ -229,28 +227,6 @@ public class RiotService {
         cacheMatch(match, puuid);
       }
     }
-  }
-  /**
-   * Performs background caching of 20 recent ranked matches for a player.
-   *
-   * @param puuid the player's Riot PUUID
-   */
-  public void cacheMatchesAsync(String puuid) {
-    executor.submit(() -> {
-      try {
-        List<String> ids = getRecentMatchIds(puuid, "ranked", 20);
-        Set<String> existing = matchRepository.findExistingMatchIds(ids);
-        for (String id : ids) {
-          if (!existing.contains(id)) {
-            JsonNode match = getMatchById(id);
-            cacheMatch(match, puuid);
-          }
-        }
-        System.out.println("Background match caching complete.");
-      } catch (Exception e) {
-        System.err.println("Failed background caching: " + e.getMessage());
-      }
-    });
   }
 
   /**
