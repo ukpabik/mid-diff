@@ -1,5 +1,5 @@
 package com.main.server.model;
 
-public class RiotMatchType {
+public class MatchType {
   
 }

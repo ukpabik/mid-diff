@@ -4,12 +4,12 @@ package com.main.server.model;
  * Represents a Riot account with key identifying fields.
  * This is the domain model used throughout the app instead of raw API data.
  */
-public class RiotUserType {
+public class UserType {
   private String puuid;
   private String gameName;
   private String tagline;
 
-  public RiotUserType(String puuid, String gameName, String tagline){
+  public UserType(String puuid, String gameName, String tagline){
     this.puuid = puuid;
     this.gameName = gameName;
     this.tagline = tagline;

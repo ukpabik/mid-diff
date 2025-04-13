@@ -5,7 +5,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 /**
  * Config file for returning env variables.
  */
-public class RiotConfig {
+public class APIConfig {
     private final Dotenv dotenv = Dotenv.load();
 
     public String getKey() {

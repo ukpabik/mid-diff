@@ -12,35 +12,34 @@ import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.main.server.config.RiotConfig;
-import com.main.server.factory.RiotFactory;
-import com.main.server.model.RiotUserType;
+import com.main.server.config.APIConfig;
+import com.main.server.factory.Factory;
+import com.main.server.model.UserType;
 
 /**
- * RiotService handles communication with Riot's external APIs.
- * It processes raw data and constructs typed objects using the RiotFactory.
+ * AccountService handles communication with Riot's external API for account information.
+ * It processes raw data and constructs typed objects using the Factory.
  */
 @Service
-public class RiotService {
-  
+public class AccountService {
   // Configuration object for loading Riot API key securely
-  private final RiotConfig config = new RiotConfig();
+  private final APIConfig config = new APIConfig();
 
 
   /**
    * Fetches Riot user account info from the Riot API using Riot ID + tagLine.
    *
-   * @param riotId the user's Riot username (gameName)
+   * @param id the user's Riot username (gameName)
    * @param tagLine the user's tagline (e.g., NA1)
-   * @return RiotUserType object with gameName, tagLine, and puuid
+   * @return UserType object with gameName, tagLine, and puuid
    * @throws Exception if the API call fails or parsing goes wrong
    */
-  public RiotUserType getUserByRiotId(String riotId, String tagLine) throws Exception {
+  public UserType getUserById(String id, String tagLine) throws Exception {
     URI uri = UriComponentsBuilder
       .fromUriString("https://americas.api.riotgames.com")
       .path("/riot/account/v1/accounts/by-riot-id/{riotId}/{tagline}")
       .queryParam("api_key", config.getKey())
-      .buildAndExpand(riotId, tagLine)
+      .buildAndExpand(id, tagLine)
       .toUri();
 
     URL url = uri.toURL();
@@ -65,6 +64,6 @@ public class RiotService {
     con.disconnect();
 
     Map<String, Object> map = new JSONObject(content.toString()).toMap();
-    return RiotFactory.mapToUser(map);
+    return Factory.mapToUser(map);
   }
 }
