@@ -8,7 +8,6 @@ interface PlayerCardProps {
 }
 
 export default function PlayerCard({ player }: PlayerCardProps) {
-  // Add null check to prevent the "Cannot read properties of undefined" error
   if (!player) {
     return (
       <Card>

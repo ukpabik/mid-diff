@@ -8,12 +8,10 @@ import MatchHistoryClient from "@/components/match-history-client"
 import { getPlayerFromDb } from "@/lib/api"
 
 export default async function PlayerPage({ params }: { params: { puuid: string } }) {
-  // In Next.js App Router, we need to use a try/catch block for data fetching in server components
   let player = null
   let error = null
 
   try {
-    // Fetch the player data server-side
     player = await getPlayerFromDb(params.puuid)
   } catch (err) {
     console.error("Error loading player:", err)

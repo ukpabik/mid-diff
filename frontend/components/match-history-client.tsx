@@ -1,5 +1,4 @@
 "use client"
-
 import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -15,13 +14,12 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
 
   // Track the last time the user manually refreshed
   const [lastRefresh, setLastRefresh] = useState<number | null>(null)
+  
 
-  // 1) Initial load
   useEffect(() => {
     loadMatches()
   }, [puuid])
 
-  // 2) Load matches function
   async function loadMatches() {
     try {
       setIsLoading(true)
@@ -36,11 +34,10 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
     }
   }
 
-  // 3) Manual refresh – ensure at least 60s between clicks
+  // Manual refresh button – ensure at least 60s between clicks
   async function handleRefresh() {
     const now = Date.now()
     if (lastRefresh && now - lastRefresh < 60_000) {
-      // too soon, do nothing or show alert
       return
     }
     setLastRefresh(now)
@@ -66,7 +63,6 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
     )
   }
 
-  // If an error happened
   if (error) {
     return (
       <div className="text-center py-8">
@@ -75,12 +71,10 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
     )
   }
 
-  // If no matches are found
   if (!matches || matches.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">No match history available</p>
-        {/* Refresh button */}
         <button
           className="mt-4 px-4 py-2 bg-secondary text-secondary-foreground rounded disabled:opacity-50"
           onClick={handleRefresh}
@@ -96,7 +90,6 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Refresh UI */}
       <div className="text-right">
         <button
           className="mb-2 px-4 py-2 bg-secondary text-secondary-foreground rounded disabled:opacity-50"

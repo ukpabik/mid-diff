@@ -37,9 +37,9 @@ public class PlayerRepository {
 
     return jdbcTemplate.update(connection -> {
       PreparedStatement ps = connection.prepareStatement(sql);
-      ps.setString(1, player.getPuuid());
-      ps.setString(2, player.getGameName());
-      ps.setString(3, player.getTagLine());
+      ps.setString(1, player.getGameName());
+      ps.setString(2, player.getTagLine());
+      ps.setString(3, player.getPuuid());
       return ps;
     });
   }
