@@ -10,6 +10,14 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
 
+
+/**
+ * Configuration class for setting up the database connection and JDBC template.
+ * 
+ * This config pulls PostgreSQL connection credentials from environment variables
+ * or a Spring-supported properties source and registers `DataSource` and `JdbcTemplate`
+ * beans for use throughout the application.
+ */
 @Configuration
 public class DatabaseConfig {
 
@@ -23,6 +31,11 @@ public class DatabaseConfig {
   private String dbPassword;
 
 
+  /**
+   * Initializes the {@link DataSource} bean using PostgreSQL connection properties.
+   *
+   * @return configured {@link DataSource} for JDBC use
+   */
   @Bean
   public DataSource dataSource() {
     DriverManagerDataSource dataSource = new DriverManagerDataSource();
@@ -33,6 +46,12 @@ public class DatabaseConfig {
     return dataSource;
   }
 
+  /**
+   * Provides a configured {@link JdbcTemplate} bean backed by the application's {@link DataSource}.
+   *
+   * @param dataSource the injected data source
+   * @return an instance of {@link JdbcTemplate} to simplify DB queries
+   */
   @Bean
   public JdbcTemplate jdbcTemplate(DataSource dataSource) {
     return new JdbcTemplate(dataSource);

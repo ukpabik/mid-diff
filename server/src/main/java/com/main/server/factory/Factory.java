@@ -18,8 +18,8 @@ public class Factory {
    */
   public static Player mapToUser(Map<String, Object> data){
     String puuid = (String) data.get("puuid");
-    String gameName = (String) data.get("game_name");
-    String tagLine = (String) data.get("tag_line");
+    String gameName = (String) data.get("gameName");
+    String tagLine = (String) data.get("tagLine");
 
     return new Player(puuid, gameName, tagLine);
   }

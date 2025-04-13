@@ -1,6 +1,7 @@
 package com.main.server.repository;
 
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,13 +11,16 @@ import org.springframework.stereotype.Repository;
 import com.main.server.mapper.PlayerRowMapper;
 import com.main.server.model.Player;
 
+/**
+ * Repository class for performing database operations on the `players` table.
+ * Provides CRUD functionality using Spring's JdbcTemplate.
+ */
 @Repository
 public class PlayerRepository {
   @Autowired
   private JdbcTemplate jdbcTemplate;
   
 
-  // TODO: This should handle errors
   public int save(Player player) {
     return jdbcTemplate.update(connection -> {
       PreparedStatement ps = connection.prepareStatement(
@@ -30,10 +34,14 @@ public class PlayerRepository {
   }
   public int updatePlayer(Player player) {
     String sql = "UPDATE players SET game_name = ?, tag_line = ? WHERE puuid = ?";
-    return jdbcTemplate.update(sql,
-      player.getGameName(),
-      player.getTagLine(),
-      player.getPuuid());
+
+    return jdbcTemplate.update(connection -> {
+      PreparedStatement ps = connection.prepareStatement(sql);
+      ps.setString(1, player.getPuuid());
+      ps.setString(2, player.getGameName());
+      ps.setString(3, player.getTagLine());
+      return ps;
+    });
   }
 
   public Player findByPuuid(String puuid){
@@ -48,7 +56,12 @@ public class PlayerRepository {
 
   public List<Player> findAll(){
     String sql = "SELECT * FROM players";
-    return jdbcTemplate.query(sql, new PlayerRowMapper());
+    try{
+      return jdbcTemplate.query(sql, new PlayerRowMapper());
+    }
+    catch(Exception e){
+      return new ArrayList<>();
+    }
   }
 
 

@@ -2,49 +2,41 @@ package com.main.server.controller;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.main.server.model.Player;
-import com.main.server.service.AccountService;
 import com.main.server.service.DatabaseService;
+import com.main.server.service.RiotService;
 
 
 /**
- * REST controller for Riot-related endpoints.
- * Routes API requests and delegates logic to AccountService.
+ * REST controller for user-related endpoints involving Riot API integration and database access.
+ * 
+ * This controller exposes endpoints to:
+ * - Fetch a Riot user's info via Riot ID and tagline
+ * - Upsert users into the database
+ * - Cache recent match data in the background
+ * - Fetch cached match data
  */
 @RestController
 @RequestMapping("/user")
 public class Controller {
 
   private final DatabaseService databaseService;
-  private final AccountService accountService;
+  private final RiotService accountService;
 
-  public Controller(DatabaseService databaseService, AccountService accountService) {
+  public Controller(DatabaseService databaseService, RiotService accountService) {
     this.databaseService = databaseService;
     this.accountService = accountService;
   }
 
-
   /**
-   * GET /user/{riotId}/{tagLine}
-   * 
-   * Fetches a user's Riot account info based on Riot ID and tagline.
-   * Example: /user/TheBestMid/NA1
+   * Fetches a Riot user by game name and tagline using the Riot API.
    *
-   * @param riotId the user's Riot game name (e.g., TheBestMid)
-   * @param tagline the Riot tagLine (e.g., NA1)
-   * @return UserType object or error message
+   * @param riotId the Riot game name (e.g., "TheBestMid")
+   * @param tagLine the tagline associated with the Riot ID (e.g., "NA1")
+   * @return {@link Player} object containing user info or error message on failure
    */
   @GetMapping("/{riotId}/{tagLine}")
   public ResponseEntity<?> getUser(@PathVariable String riotId, @PathVariable String tagLine) {
@@ -56,6 +48,12 @@ public class Controller {
     }
   }
 
+  /**
+   * Retrieves a user from the Supabase database using their PUUID.
+   *
+   * @param puuid the PUUID of the player
+   * @return {@link Player} object from the database or a 404 error if not found
+   */
   @GetMapping("/db/{puuid}")
   public ResponseEntity<?> getUserFromDb(@PathVariable String puuid) {
     try {
@@ -66,20 +64,73 @@ public class Controller {
     }
   }
 
+  /**
+   * Upserts a user into the database. If the user exists, updates their name/tag; otherwise inserts a new user.
+   *
+   * @param user the {@link Player} object to be saved or updated
+   * @return the upserted user or an error response
+   */
   @PutMapping("/upsert")
   public ResponseEntity<?> upsertUser(@RequestBody Player user){
-    System.out.println("Start upsert");
     try {
       // Check if a user with the given puuid already exists
       Player existingUser = databaseService.findByPuuid(user.getPuuid());
       if (existingUser == null) {
-        // If not, create a new record
         databaseService.saveUser(user);
       } else {
-        // Otherwise, update the existing record with new gameName and tagline
         databaseService.updateUser(user);
       }
       return ResponseEntity.ok(user);
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+    }
+  }
+
+  /**
+   * Performs a full account + match sync:
+   *  Fetches Riot account info via Riot API
+   *  Upserts the user in the Supabase DB
+   *  Triggers background match caching for the 20 most recent ranked matches
+   * 
+   *
+   * @param riotId the Riot game name
+   * @param tagLine the Riot tagline
+   * @return the upserted user or error message
+   */
+  @GetMapping("/search/{riotId}/{tagLine}")
+  public ResponseEntity<?> searchAndCache(@PathVariable String riotId, @PathVariable String tagLine) {
+    try {
+      // 1) Get user from Riot
+      Player user = accountService.getUserById(riotId, tagLine);
+
+      // 2) Upsert into db
+      Player existing = databaseService.findByPuuid(user.getPuuid());
+      if (existing == null) {
+        databaseService.saveUser(user);
+      } else {
+        databaseService.updateUser(user);
+      }
+      // 3) Fetch 20 recent match IDs
+      accountService.cacheMatchesAsync(user.getPuuid());
+      return ResponseEntity.ok(user);
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+    }
+  }
+
+
+
+  /**
+   * Fetches cached match data for a given player PUUID from Supabase.
+   * Intended for frontend polling after search and background cache are triggered.
+   *
+   * @param puuid the PUUID of the player
+   * @return a list of cached match objects or error if lookup fails
+   */
+  @GetMapping("/matches/{puuid}")
+  public ResponseEntity<?> getCachedMatches(@PathVariable String puuid) {
+    try {
+      return ResponseEntity.ok(accountService.getCachedMatches(puuid));
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
