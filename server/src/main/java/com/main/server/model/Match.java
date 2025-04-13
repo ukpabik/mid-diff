@@ -1,5 +1,5 @@
 package com.main.server.model;
 
-public class MatchType {
+public class Match {
   
 }

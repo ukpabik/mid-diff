@@ -29,8 +29,16 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
-.vscode/
-
-
+# Secrets
 .env
+.env.local
+application-local.properties
+application-dev.properties
+secrets.properties
+
+# IDE/Build files
+.idea/
+*.iml
+target/
+out/
+.vscode/

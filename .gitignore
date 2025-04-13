@@ -1,5 +1,14 @@
+# Secrets
+.env
+.env.local
+application-local.properties
+application-dev.properties
+secrets.properties
 
-### VS Code ###
+# IDE/Build files
+.idea/
+*.iml
+target/
+out/
 .vscode/
 
-.env

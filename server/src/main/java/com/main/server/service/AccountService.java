@@ -9,12 +9,12 @@ import java.net.URL;
 import java.util.Map;
 
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.main.server.config.APIConfig;
 import com.main.server.factory.Factory;
-import com.main.server.model.UserType;
+import com.main.server.model.Player;
 
 /**
  * AccountService handles communication with Riot's external API for account information.
@@ -22,8 +22,8 @@ import com.main.server.model.UserType;
  */
 @Service
 public class AccountService {
-  // Configuration object for loading Riot API key securely
-  private final APIConfig config = new APIConfig();
+  @Value("${spring.api.riot.key}")
+  private String apiKey;
 
 
   /**
@@ -34,11 +34,11 @@ public class AccountService {
    * @return UserType object with gameName, tagLine, and puuid
    * @throws Exception if the API call fails or parsing goes wrong
    */
-  public UserType getUserById(String id, String tagLine) throws Exception {
+  public Player getUserById(String id, String tagLine) throws Exception {
     URI uri = UriComponentsBuilder
       .fromUriString("https://americas.api.riotgames.com")
       .path("/riot/account/v1/accounts/by-riot-id/{riotId}/{tagline}")
-      .queryParam("api_key", config.getKey())
+      .queryParam("api_key", apiKey)
       .buildAndExpand(id, tagLine)
       .toUri();
 
