@@ -3,6 +3,7 @@ import json
 from dotenv import load_dotenv
 import os
 import time
+import pandas as pd
 
 load_dotenv()
 
@@ -10,7 +11,7 @@ API_KEY = os.getenv("RIOT_API_KEY")
 REGION = 'na1'
 API_BASE = "http://localhost:8080/user"
 AMERICAS_REGION = "americas"
-TIERS = ['GOLD', 'PLATINUM', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER']
+TIERS = ['DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER']
 
 
 # Checks if a given puuid is in the database already
@@ -25,15 +26,26 @@ def is_user_in_db(puuid):
 
 # Fetches all player PUUIDs from Riot for a given ranked tier
 def get_summoners_by_tier(tier):
-  url = f'https://{REGION}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/{tier}/I?page=1&api_key={API_KEY}'
-  response = requests.get(url)
-  
-  if response.status_code == 200:
-    
-    data = json.loads(response.content)
-  
-    puuids = [entry["puuid"] for entry in data]
-    return puuids
+  # top ranks have special endpoint
+  if tier in ['MASTER', 'GRANDMASTER', 'CHALLENGER']:
+    endpoint = f"https://{REGION}.api.riotgames.com/lol/league/v4/{tier.lower()}leagues/by-queue/RANKED_SOLO_5x5?api_key={API_KEY}"
+    response = requests.get(endpoint)
+    if response.status_code == 200:
+      data = response.json()
+      return [entry["puuid"] for entry in data.get("entries", [])]
+    else:
+      print(f"⚠️ Failed for {tier}: {response.status_code}")
+      return []
+  else:
+    # Regular endpoint for Iron -> Diamond
+    endpoint = f"https://{REGION}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/{tier}/I?page=1&api_key={API_KEY}"
+    response = requests.get(endpoint)
+    if response.status_code == 200:
+      data = response.json()
+      return [entry["puuid"] for entry in data]
+    else:
+      print(f"⚠️ Failed for {tier}: {response.status_code}")
+      return []
 
 # Aggregates PUUIDs from all tiers into one flat list
 def puuid_script():
@@ -69,7 +81,7 @@ def call_search(riot_id, tag_line):
   while True:
     res = requests.get(url)
     if res.status_code == 429:
-      print(f"⏳ Local API 429 — backing off {backoff}s...")
+      print(f"⏳ API 429 — backing off {backoff}s...")
       time.sleep(backoff)
       backoff = min(backoff * 2, 15)
     elif res.status_code == 200:
@@ -104,5 +116,13 @@ def add_match_data_to_db():
 
     time.sleep(0.5)
 
-
-add_match_data_to_db()
+def get_training_data():
+  dfs = []
+  # read all matches and load into one csv for ML model training
+  url = f"http://localhost:8080/user/matches/csv/all"
+  df = pd.read_csv(url)
+  df.drop(df.columns[[0, 1]], axis=1, inplace=True)
+  dfs.append(df)
+    
+  full_df = pd.concat(dfs)
+  full_df.to_csv("training_dataset.csv", index=False)

@@ -280,4 +280,13 @@ public class RiotService {
   public List<Match> getCachedMatches(String puuid) {
     return matchRepository.findByPuuid(puuid);
   }
+
+  /**
+   * Fetches all matches in the database.
+   *
+   * @return a list of all {@link Match} records
+   */
+  public List<Match> getAllMatches(){
+    return matchRepository.findAll();
+  }
 }

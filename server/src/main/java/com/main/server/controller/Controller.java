@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 import com.main.server.model.Match;
 import com.main.server.model.Player;
-import com.main.server.service.CsvService;
 import com.main.server.service.DatabaseService;
 import com.main.server.service.RiotService;
 
@@ -165,6 +164,13 @@ public class Controller {
     }
   }
   
+
+  /**
+   * 
+   * Fetches cached matches for a user and outputs a csv file with the match data. (For ML Model)
+   * @param puuid the PUUID of the player
+   * @param response csv file response
+   */
   @GetMapping(value="/matches/csv/{puuid}", produces = "text/csv")
   public void downloadMatchCsv(@PathVariable String puuid, HttpServletResponse response){
     try {
@@ -197,4 +203,43 @@ public class Controller {
       response.setStatus(500);
     }
   }
+  
+  /**
+   * Exports all cached matches across all users as a CSV file (for ML model training).
+   *
+   * @param response HttpServletResponse used to stream CSV data
+   */
+  @GetMapping(value = "/matches/csv/all", produces = "text/csv")
+  public void downloadAllMatchesCsv(HttpServletResponse response) {
+    try {
+      List<Match> matches = accountService.getAllMatches(); 
+
+      // Set headers
+      response.setContentType("text/csv");
+      response.setHeader("Content-Disposition", "attachment; filename=training_dataset.csv");
+
+      // Write CSV header
+      PrintWriter writer = response.getWriter();
+      writer.println("puuid,matchId,championName,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
+
+      for (Match m : matches) {
+        writer.printf("%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
+          m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getTeamPosition(), m.isWin(),
+          m.getKills(), m.getDeaths(), m.getAssists(),
+          m.getGoldEarned(), m.getGoldSpent(),
+          m.getCsPerMin(), m.getKda(),
+          m.getVisionScore(), m.getWardsPlaced(), m.getWardsKilled(),
+          m.getDamageDealtToChampions(), m.getTotalDamageTaken(),
+          m.getGameMode(), m.getQueueId(), m.getGameDuration(),
+          m.getTotalMinionsKilled(), m.getNeutralMinionsKilled(),
+          m.getTurretTakedowns(), m.getInhibitorTakedowns()
+        );
+      }
+
+      writer.flush();
+    } catch (Exception e) {
+      response.setStatus(500);
+    }
+  }
+
 }
