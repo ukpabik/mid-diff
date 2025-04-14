@@ -79,7 +79,10 @@ public class Controller {
   public ResponseEntity<?> getUserFromDb(@PathVariable String puuid) {
     try {
       Player player = databaseService.findByPuuid(puuid);
-      return ResponseEntity.ok(player);
+      if (player != null){
+        return ResponseEntity.ok(player);
+      }
+      throw new Exception("Not found");
     } catch (Exception e) {
       return ResponseEntity.status(404).body(Map.of("error", "Player not found"));
     }
