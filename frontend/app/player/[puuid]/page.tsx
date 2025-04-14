@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
 export default async function PlayerPage({
   params,
 }: {
-  params: { puuid: string };
+  params: { puuid: string } | Promise<{ puuid: string }>;
 }) {
   try {
-    const { puuid } = params;
+    const { puuid } = await Promise.resolve(params);
     let error = null;
     const player = await getPlayerFromDb(puuid)
 
