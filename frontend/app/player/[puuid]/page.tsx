@@ -8,12 +8,15 @@ import MatchHistoryClient from "@/components/match-history-client"
 import { getPlayerFromDb } from "@/lib/api"
 import { notFound } from "next/navigation"
 
+type PlayerPageProps = {
+  params: {
+    puuid: string;
+  };
+};
 export const dynamic = "force-dynamic";
 export default async function PlayerPage({
   params,
-}: {
-  params: { puuid: string }
-}) {
+}: PlayerPageProps) {
   try {
     let error = null;
     const player = await getPlayerFromDb(params.puuid)
