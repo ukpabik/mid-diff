@@ -61,5 +61,10 @@ public class MatchRepository {
     String sql = "SELECT * FROM matches WHERE puuid = ? ORDER BY game_start_timestamp DESC";
     return jdbcTemplate.query(sql, new MatchRowMapper(), puuid);
   }
+
+  public List<Match> findAll() {
+    String sql = "SELECT * FROM matches ORDER BY game_start_timestamp DESC";
+    return jdbcTemplate.query(sql, new MatchRowMapper());
+  }
   
 }

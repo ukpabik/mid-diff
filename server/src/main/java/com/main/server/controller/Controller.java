@@ -1,12 +1,17 @@
 package com.main.server.controller;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.main.server.model.Player;
+import com.main.server.service.CsvService;
 import com.main.server.service.DatabaseService;
 import com.main.server.service.RiotService;
 
@@ -26,10 +31,12 @@ public class Controller {
 
   private final DatabaseService databaseService;
   private final RiotService accountService;
+  private final CsvService csvService;
 
-  public Controller(DatabaseService databaseService, RiotService accountService) {
+  public Controller(DatabaseService databaseService, RiotService accountService, CsvService csvService) {
     this.databaseService = databaseService;
     this.accountService = accountService;
+    this.csvService = csvService;
   }
 
   /**
@@ -139,6 +146,31 @@ public class Controller {
     try {
       return ResponseEntity.ok(accountService.getCachedMatches(puuid));
     } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+    }
+  }
+
+
+  @GetMapping("/debug/trigger-csv")
+  public ResponseEntity<?> triggerCsvExport(){
+    csvService.generateCsvAsync();
+    return ResponseEntity.ok(Map.of("status", "CSV export started in background"));
+  }
+
+  @GetMapping("/debug/download-csv")
+  public ResponseEntity<?> downloadCsv(){
+    File csvFile = csvService.getLatestCsv();
+    if (csvFile == null || !csvFile.exists()) {
+      return ResponseEntity.status(404).body(Map.of("error", "No CSV has been generated yet"));
+    }
+
+    try {
+      InputStreamResource resource = new InputStreamResource(new FileInputStream(csvFile));
+      return ResponseEntity.ok()
+        .header("Content-Disposition", "attachment; filename=match_export.csv")
+        .header("Content-Type", "text/csv")
+        .body(resource);
+    } catch (IOException e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
   }
