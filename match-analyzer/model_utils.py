@@ -6,98 +6,102 @@ import os
 import json
 
 load_dotenv()
-print(os.getenv("GEMINI_API_KEY"))
 
 def interpret_cluster(row):
   desc = []
 
-  # Combat
-  if row['kills'] >= 10:
-    desc.append("carry performance")
-  elif row['kills'] <= 2:
-    desc.append("low kill participation")
+  duration_mins = row["gameDuration"] / 60.0
+  if duration_mins == 0:
+      return "Invalid game duration"
 
-  if row['deaths'] >= 10:
-    desc.append("frequent deaths")
-  elif row['deaths'] <= 2:
-    desc.append("very low deaths")
+  kills_per_min = row["kills"] / duration_mins
+  deaths_per_min = row["deaths"] / duration_mins
+  assists_per_min = row["assists"] / duration_mins
+  gold_per_min = row["goldEarned"] / duration_mins
 
-  if row['assists'] >= 15:
-    desc.append("heavy team support")
-  elif row['assists'] <= 3:
-    desc.append("low team involvement")
+  if row["gameDuration"] <= 1200:
+      desc.append("short stomp")
+  elif row["gameDuration"] >= 2700:
+      desc.append("very long game") 
 
-  if row['kda'] >= 5:
-    desc.append("high KDA (clean execution)")
-  elif row['kda'] <= 1.5:
-    desc.append("low KDA (high risk or feeding)")
+  if kills_per_min >= 0.3:
+      desc.append("carry performance")
+  elif kills_per_min <= 0.1:
+      desc.append("low kill participation")
 
-  # Economy
-  if row['goldEarned'] >= 15000:
-    desc.append("gold fed")
-  elif row['goldEarned'] <= 7000:
-    desc.append("gold-starved")
+  if deaths_per_min >= 0.3:
+      desc.append("frequent deaths")
+  elif deaths_per_min <= 0.07:
+      desc.append("very low deaths")
 
-  if row['goldSpent'] < row['goldEarned'] * 0.8:
-    desc.append("inefficient spending")
+  if assists_per_min >= 0.5:
+      desc.append("heavy team support")
+  elif assists_per_min <= 0.1:
+      desc.append("low team involvement")
 
-  # Farming
-  if row['csPerMin'] >= 8.5:
-    desc.append("elite farming")
-  elif row['csPerMin'] <= 4.5:
-    desc.append("low CS rate")
+  if row["kda"] >= 5:
+      desc.append("high KDA (clean execution)")
+  elif row["kda"] <= 1.5:
+      desc.append("low KDA (high risk or feeding)")
 
-  total_cs = row['totalMinionsKilled'] + row['neutralMinionsKilled']
+  if gold_per_min >= 500:
+      desc.append("gold fed")
+  elif gold_per_min <= 233:
+      desc.append("gold-starved")
+
+  if row["goldSpent"] < row["goldEarned"] * 0.8:
+      desc.append("inefficient spending")
+
+  if row["csPerMin"] >= 8.5:
+      desc.append("elite farming")
+  elif row["csPerMin"] <= 4.5:
+      desc.append("low CS rate")
+
+  total_cs = row["totalMinionsKilled"] + row["neutralMinionsKilled"]
   if total_cs >= 300:
-    desc.append("farm-heavy role (mid/ADC)")
+      desc.append("farm-heavy role (mid/ADC)")
   elif total_cs <= 80:
-    desc.append("low minion control")
+      desc.append("low minion control")
 
-  # Damage
-  if row['damageDealtToChampions'] >= 35000:
-    desc.append("very high damage")
-  elif row['damageDealtToChampions'] <= 10000:
-    desc.append("low damage output")
+  dmg_per_min = row["damageDealtToChampions"] / duration_mins
+  if dmg_per_min >= 2000:
+      desc.append("very high damage")
+  elif dmg_per_min <= 500:
+      desc.append("low damage output")
 
-  if row['totalDamageTaken'] >= 40000:
-    desc.append("frontline tanking")
-  elif row['totalDamageTaken'] <= 10000:
-    desc.append("avoids frontline or squishy")
+  dmg_taken_per_min = row["totalDamageTaken"] / duration_mins
+  if dmg_taken_per_min >= 1333: 
+      desc.append("frontline tanking")
+  elif dmg_taken_per_min <= 333:
+      desc.append("avoids frontline or squishy")
 
-  # Vision
-  if row['visionScore'] >= 50:
-    desc.append("excellent map awareness")
-  elif row['visionScore'] <= 15:
-    desc.append("poor vision control")
+  if row["visionScore"] >= 50:
+      desc.append("excellent map awareness")
+  elif row["visionScore"] <= 15:
+      desc.append("poor vision control")
 
-  if row['wardsPlaced'] >= 30:
-    desc.append("vision-focused role (support)")
-  elif row['wardsPlaced'] <= 5:
-    desc.append("no warding")
+  if row["wardsPlaced"] >= 30:
+      desc.append("vision-focused role (support)")
+  elif row["wardsPlaced"] <= 5:
+      desc.append("no warding")
 
-  if row['wardsKilled'] >= 7:
-    desc.append("vision denial expert")
-  elif row['wardsKilled'] <= 1:
-    desc.append("poor enemy vision control")
+  if row["wardsKilled"] >= 7:
+      desc.append("vision denial expert")
+  elif row["wardsKilled"] <= 1:
+      desc.append("poor enemy vision control")
 
-  # Objectives
-  if row['turretTakedowns'] >= 5:
-    desc.append("strong objective pressure")
-  elif row['turretTakedowns'] == 0:
-    desc.append("no turret participation")
+  if row["turretTakedowns"] >= 5:
+      desc.append("strong objective pressure")
+  elif row["turretTakedowns"] == 0:
+      desc.append("no turret participation")
 
-  if row['inhibitorTakedowns'] >= 2:
-    desc.append("closes games")
-  elif row['inhibitorTakedowns'] == 0:
-    desc.append("never reached inhib")
-
-  # Game Duration
-  if row['gameDuration'] >= 2200:
-    desc.append("very long game")
-  elif row['gameDuration'] <= 1500:
-    desc.append("short stomp")
+  if row["inhibitorTakedowns"] >= 2:
+      desc.append("closes games")
+  elif row["inhibitorTakedowns"] == 0:
+      desc.append("never reached inhib")
 
   return ", ".join(desc)
+
 
 def enrich_cluster(row):
   cluster = row['cluster']

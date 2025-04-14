@@ -52,7 +52,6 @@ def run_k_means():
   df['cluster'] = cluster_labels
   df.to_csv("clustered_dataset.csv", index=False)
 
-  
   # use raw data and label it with cluster labels
   raw_df = pd.read_csv("training_dataset.csv")
   raw_df['cluster'] = cluster_labels

@@ -1,6 +1,6 @@
-from get_data import get_training_data, add_match_data_to_db
+# from get_data import get_training_data, add_match_data_to_db
 from normalize_data import normalize, run_k_means
-from interpret_data import export_labeled_data, interpret_cluster
+from interpret_data import export_labeled_data
 
 
 

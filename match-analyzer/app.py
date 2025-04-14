@@ -10,7 +10,6 @@ def analyze():
   match_data = request.get_json()
   result = analyze_match(match_data)
   updated = generate_advice(result)
-  print(updated)
   return jsonify(updated), 200
 
 if __name__ == '__main__':
