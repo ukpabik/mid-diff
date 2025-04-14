@@ -24,6 +24,7 @@ def normalize():
   # normalize features using standard scaler
   scaler = StandardScaler()
   scaled_data = scaler.fit_transform(df[features])
+  joblib.dump(scaler, "scaler.pkl")
 
   # Create dataframe using scaled data
   normalized_df = pd.DataFrame(scaled_data, columns=features)

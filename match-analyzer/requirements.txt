@@ -1,0 +1,7 @@
+pandas
+scikit-learn
+matplotlib
+joblib
+requests
+python-dotenv
+Flask==2.3.3
