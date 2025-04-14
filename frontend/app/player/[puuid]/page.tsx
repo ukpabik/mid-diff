@@ -8,11 +8,6 @@ import MatchHistoryClient from "@/components/match-history-client"
 import { getPlayerFromDb } from "@/lib/api"
 import { notFound } from "next/navigation"
 
-type PlayerPageProps = {
-  params: {
-    puuid: string;
-  };
-};
 export const dynamic = "force-dynamic";
 export default async function PlayerPage({
   params,
@@ -20,50 +15,57 @@ export default async function PlayerPage({
   params: { puuid: string }
 }) {
   try {
-    let error = null
-    const player = await getPlayerFromDb(params.puuid)
+    let error = null;
+    let player = null;
 
+    try {
+      player = await getPlayerFromDb(params.puuid)
+    } catch (err) {
+      console.error("Error loading player:", err)
+      error = err instanceof Error ? err.message : "Failed to load player"
+    }
     if (!player) {
+      error = "Failed to load player";
       notFound()
     }
 
     return (
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Search
-            </Button>
-          </Link>
-        </div>
-  
-        <div className="grid gap-8 md:grid-cols-[300px_1fr] lg:grid-cols-[350px_1fr]">
-          <div>
-            {!player && !error ? (
-              <PlayerCardSkeleton />
-            ) : error ? (
-              <Card className="p-6">
-                <div className="text-center text-red-500">{error}</div>
-              </Card>
-            ) : (
-              <PlayerCard player={player} />
-            )}
-          </div>
-  
-          <div>
+    <main className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <Link href="/">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Search
+          </Button>
+        </Link>
+      </div>
+
+      <div className="grid gap-8 md:grid-cols-[300px_1fr] lg:grid-cols-[350px_1fr]">
+        <div>
+          {!player && !error ? (
+            <PlayerCardSkeleton />
+          ) : error ? (
             <Card className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Match History</h2>
-              {error ? (
-                <div className="text-center text-red-500">Failed to load matches</div>
-              ) : (
-                <MatchHistoryClient puuid={params.puuid} />
-              )}
+              <div className="text-center text-red-500">{error}</div>
             </Card>
-          </div>
+          ) : (
+            <PlayerCard player={player} />
+          )}
         </div>
-      </main>
-    )
+
+        <div>
+          <Card className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Match History</h2>
+            {error ? (
+              <div className="text-center text-red-500">Failed to load matches</div>
+            ) : (
+              <MatchHistoryClient puuid={params.puuid} />
+            )}
+          </Card>
+        </div>
+      </div>
+    </main>
+  )
   } catch (err) {
     console.error("Error loading player:", err)
     throw new Error("Failed to load player")
