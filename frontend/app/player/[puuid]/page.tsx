@@ -17,12 +17,18 @@ export default async function PlayerPage({
 }) {
   try {
     const { puuid } = await Promise.resolve(params);
+    let player = null;
     let error = null;
-    const player = await getPlayerFromDb(puuid)
 
-    if (!player) {
-      error = "Failed to load player";
-      notFound()
+    try {
+      player = await getPlayerFromDb(puuid);
+      if (!player) {
+        error = "Failed to load player";
+        notFound();
+      }
+    } catch (err) {
+      console.error("Error loading player:", err);
+      throw new Error("Failed to load player");
     }
 
 
