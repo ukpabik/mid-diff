@@ -7,6 +7,7 @@ import PlayerCard from "@/components/player-card"
 import MatchHistoryClient from "@/components/match-history-client"
 import { getPlayerFromDb } from "@/lib/api"
 
+export const dynamic = "force-dynamic";
 export default async function PlayerPage({ params }: { params: { puuid: string } }) {
   let player = null
   let error = null

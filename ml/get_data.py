@@ -126,3 +126,5 @@ def get_training_data():
     
   full_df = pd.concat(dfs)
   full_df.to_csv("training_dataset.csv", index=False)
+  
+add_match_data_to_db()

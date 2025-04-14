@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Loader2 } from "lucide-react"
-import { getCachedMatches } from "@/lib/api"
+import { analyzeMatch, getCachedMatches } from "@/lib/api"
 import type { Match } from "@/lib/types"
 
 export default function MatchHistoryClient({ puuid }: { puuid: string }) {
@@ -14,7 +14,6 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
 
   // Track the last time the user manually refreshed
   const [lastRefresh, setLastRefresh] = useState<number | null>(null)
-  
 
   useEffect(() => {
     loadMatches()
@@ -80,9 +79,7 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
           onClick={handleRefresh}
           disabled={refreshDisabled}
         >
-          {refreshDisabled
-            ? `Wait ${refreshWait}s`
-            : "Refresh"}
+          {refreshDisabled ? `Wait ${refreshWait}s` : "Refresh"}
         </button>
       </div>
     )
@@ -96,9 +93,7 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
           onClick={handleRefresh}
           disabled={refreshDisabled}
         >
-          {refreshDisabled
-            ? `Wait ${refreshWait}s`
-            : "Refresh Matches"}
+          {refreshDisabled ? `Wait ${refreshWait}s` : "Refresh Matches"}
         </button>
       </div>
 
@@ -143,6 +138,29 @@ function MatchCard({ match }: { match: Match }) {
         return "Support"
       default:
         return position || "Unknown"
+    }
+  }
+
+  const [advice, setAdvice] = useState<{
+    advice: string
+    archetype_description: string
+    cluster: number
+    description: string
+    label: string
+  } | null>(null)
+  const [isLoadingAdvice, setIsLoadingAdvice] = useState(false)
+
+  const fetchAdvice = async () => {
+    try {
+      setIsLoadingAdvice(true);
+      const response = await analyzeMatch(match);
+      if (!response.ok) throw new Error("Failed to fetch advice")
+      const data = await response.json()
+      setAdvice(data)
+    } catch (error) {
+      console.error("Error fetching advice:", error)
+    } finally {
+      setIsLoadingAdvice(false)
     }
   }
 
@@ -199,6 +217,36 @@ function MatchCard({ match }: { match: Match }) {
                 <div className="text-xs text-muted-foreground">Gold</div>
                 <div className="text-sm">{(match.goldEarned / 1000).toFixed(1)}k</div>
               </div>
+            </div>
+            <div className="mt-4">
+              {!advice ? (
+                <button
+                  onClick={fetchAdvice}
+                  disabled={isLoadingAdvice}
+                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isLoadingAdvice ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Loading Advice...
+                    </>
+                  ) : (
+                    "Get Match Analysis"
+                  )}
+                </button>
+              ) : (
+                <div className="mt-2 space-y-2 bg-muted/50 p-3 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-semibold">
+                      {advice.label}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{advice.description}</span>
+                  </div>
+                  <p className="text-sm italic text-muted-foreground">{advice.archetype_description}</p>
+                  <Separator className="my-2" />
+                  <p className="text-sm">{advice.advice}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
