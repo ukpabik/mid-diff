@@ -8,6 +8,7 @@ import MatchHistoryClient from "@/components/match-history-client"
 import { getPlayerFromDb } from "@/lib/api"
 import { notFound } from "next/navigation"
 
+
 type PlayerPageProps = {
   params: {
     puuid: string;
@@ -18,8 +19,9 @@ export default async function PlayerPage({
   params,
 }: PlayerPageProps) {
   try {
+    const { puuid } = params;
     let error = null;
-    const player = await getPlayerFromDb(params.puuid)
+    const player = await getPlayerFromDb(puuid)
 
     if (!player) {
       error = "Failed to load player";
