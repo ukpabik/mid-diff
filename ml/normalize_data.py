@@ -56,28 +56,3 @@ def run_k_means():
   raw_df = pd.read_csv("training_dataset.csv")
   raw_df['cluster'] = cluster_labels
   raw_df.to_csv("labeled_data.csv", index=False)
-
-# ONLY FOR VISUALIZATION
-def scatter_():
-  # Load the clustered dataset
-  df = pd.read_csv("clustered_dataset.csv")
-  X = df.select_dtypes(include='number')
-
-  # Use the best k to cluster
-  best_k = 5
-  kmeans = KMeans(n_clusters=best_k, random_state=42)
-  df['cluster'] = kmeans.fit_predict(X)
-
-  # Use PCA to reduce to 2 components for visualization
-  pca = PCA(n_components=2)
-  X_pca = pca.fit_transform(X)
-
-  # Plot the clusters for visualization
-  plt.figure(figsize=(8, 6))
-  scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=df['cluster'], cmap='tab10', alpha=0.7)
-  plt.title(f'KMeans Clustering (k={best_k}) with PCA-reduced Data')
-  plt.xlabel('PCA Component 1')
-  plt.ylabel('PCA Component 2')
-  plt.colorbar(scatter, label='Cluster')
-  plt.grid(True)
-  plt.show()  
