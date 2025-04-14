@@ -16,18 +16,13 @@ export default async function PlayerPage({
 }) {
   try {
     let error = null;
-    let player = null;
+    const player = await getPlayerFromDb(params.puuid)
 
-    try {
-      player = await getPlayerFromDb(params.puuid)
-    } catch (err) {
-      console.error("Error loading player:", err)
-      error = err instanceof Error ? err.message : "Failed to load player"
-    }
     if (!player) {
       error = "Failed to load player";
       notFound()
     }
+
 
     return (
     <main className="container mx-auto px-4 py-8">
