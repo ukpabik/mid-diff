@@ -78,6 +78,48 @@ public class RiotService {
   }
 
   /**
+   * Fetches basic player data (gameName, tagLine, puuid) from Riot API using their puuid.
+   *
+   * @param puuid
+   * @return the {@link Player} object with Riot identifiers
+   * @throws Exception if the Riot API request or parsing fails
+   */
+  public Player getUserByPuuid(String puuid) throws Exception {
+    URI uri = UriComponentsBuilder
+      .fromUriString("https://americas.api.riotgames.com")
+      .path("/riot/account/v1/accounts/by-puuid/{puuid}")
+      .queryParam("api_key", apiKey)
+      .buildAndExpand(puuid)
+      .toUri();
+  
+    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
+    con.setRequestMethod("GET");
+    con.setRequestProperty("Content-Type", "application/json");
+    con.setConnectTimeout(5000);
+  
+    Reader streamReader = (con.getResponseCode() > 299)
+      ? new InputStreamReader(con.getErrorStream())
+      : new InputStreamReader(con.getInputStream());
+  
+    StringBuilder content = new StringBuilder();
+    try (BufferedReader in = new BufferedReader(streamReader)) {
+      String line;
+      while ((line = in.readLine()) != null) {
+        content.append(line);
+      }
+    }
+    con.disconnect();
+  
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
+    System.out.println(map); // optional: debug
+  
+    return Factory.mapToUser(map);
+  }
+  
+  
+
+  /**
    * Fetches the most recent match IDs for a given player from Riot.
    *
    * @param puuid the player's Riot PUUID

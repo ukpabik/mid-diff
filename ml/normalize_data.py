@@ -26,7 +26,7 @@ def normalize():
   normalized_df = pd.DataFrame(scaled_data, columns=features)
 
   if metadata is not None:
-      normalized_df = pd.concat([metadata.reset_index(drop=True), normalized_df], axis=1)
+    normalized_df = pd.concat([metadata.reset_index(drop=True), normalized_df], axis=1)
 
   # output csv
   normalized_df.to_csv("normalized_dataset.csv", index=False)

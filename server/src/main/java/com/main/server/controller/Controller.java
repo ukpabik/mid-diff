@@ -54,6 +54,22 @@ public class Controller {
   }
 
   /**
+   * Fetches a Riot user by puuid using Riot API.
+   *
+   * @param puuid Riot user puuid
+   * @return {@link Player} object containing user info or error message on failure
+   */
+  @GetMapping("/lookup/{puuid}")
+  public ResponseEntity<?> getUserByPuuid(@PathVariable String puuid) {
+    try {
+      Player user = accountService.getUserByPuuid(puuid);
+      return ResponseEntity.ok(user);
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+    }
+  }
+
+  /**
    * Retrieves a user from the Supabase database using their PUUID.
    *
    * @param puuid the PUUID of the player
@@ -107,7 +123,6 @@ public class Controller {
     try {
       // Get user from Riot
       Player user = accountService.getUserById(riotId, tagLine);
-      System.out.println(user);
       // Upsert into db
       Player existing = databaseService.findByPuuid(user.getPuuid());
       if (existing == null) {
@@ -146,8 +161,6 @@ public class Controller {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
   }
-
-
   
   @GetMapping(value="/matches/csv/{puuid}", produces = "text/csv")
   public void downloadMatchCsv(@PathVariable String puuid, HttpServletResponse response){

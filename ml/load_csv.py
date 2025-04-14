@@ -1,11 +1,10 @@
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from get_data import puuid_script
 
-puuids = []
+puuids = puuid_script()
+
 dfs = []
-
-#TODO: Add functionality here to generate list of puuids.
-#TODO: I want this script to essentially train the data on a list of riot ids and taglines i give it
 
 # read all matches and load into one csv for ML model training
 for puuid in puuids:
