@@ -1,6 +1,12 @@
 import pandas as pd
 import joblib
+from google import genai
+from dotenv import load_dotenv
+import os
+import json
 
+load_dotenv()
+print(os.getenv("GEMINI_API_KEY"))
 
 def interpret_cluster(row):
   desc = []
@@ -181,3 +187,39 @@ def analyze_match(new_match_row: dict):
     "description": description,
     "advice": enrichment["advice"]
   }
+
+def parse_gemini(response):
+  text = response.strip()
+  if text.startswith("```"):
+      text = text.strip("```").replace("json", "").strip()
+  data = json.loads(text)
+  
+  return data
+
+def generate_advice(cluster_json):
+  client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+  prompt = f"""
+    You are an expert League of Legends coach and analyst. Given the following player cluster profile, generate a personalized and in-depth gameplay improvement tip tailored to their performance style. Be specific and tactical — don't just state problems, give actual suggestions on what to practice or change.
+
+    Respond ONLY with the following format:
+
+    {{
+      "cluster": int,
+      "label": "",
+      "archetype_description": "",
+      "description": "",
+      "advice": ""
+    }}
+
+    Here is the input:
+
+    {cluster_json}.
+    
+    Also, make sure the advice is concise and it should be limited to two to three sentences.
+  """
+  response = client.models.generate_content(
+    model="gemini-2.0-flash",
+    contents=[prompt]
+  )
+  
+  return parse_gemini(response.text)

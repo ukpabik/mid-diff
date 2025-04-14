@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from model_utils import analyze_match
+from model_utils import analyze_match, generate_advice
 
 app = Flask(__name__)
 
@@ -7,7 +7,8 @@ app = Flask(__name__)
 def analyze():
   match_data = request.get_json()
   result = analyze_match(match_data)
-  return jsonify(result)
+  updated = generate_advice(result)
+  return jsonify(updated)
 
 if __name__ == '__main__':
   app.run()

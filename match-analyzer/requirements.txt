@@ -5,3 +5,4 @@ joblib
 requests
 python-dotenv
 Flask==2.3.3
+google
