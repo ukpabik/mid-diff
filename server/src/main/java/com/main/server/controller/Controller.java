@@ -1,19 +1,18 @@
 package com.main.server.controller;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.main.server.model.Match;
 import com.main.server.model.Player;
 import com.main.server.service.CsvService;
 import com.main.server.service.DatabaseService;
 import com.main.server.service.RiotService;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 
 /**
@@ -31,12 +30,10 @@ public class Controller {
 
   private final DatabaseService databaseService;
   private final RiotService accountService;
-  private final CsvService csvService;
 
-  public Controller(DatabaseService databaseService, RiotService accountService, CsvService csvService) {
+  public Controller(DatabaseService databaseService, RiotService accountService){
     this.databaseService = databaseService;
     this.accountService = accountService;
-    this.csvService = csvService;
   }
 
   /**
@@ -151,27 +148,37 @@ public class Controller {
   }
 
 
-  @GetMapping("/debug/trigger-csv")
-  public ResponseEntity<?> triggerCsvExport(){
-    csvService.generateCsvAsync();
-    return ResponseEntity.ok(Map.of("status", "CSV export started in background"));
-  }
-
-  @GetMapping("/debug/download-csv")
-  public ResponseEntity<?> downloadCsv(){
-    File csvFile = csvService.getLatestCsv();
-    if (csvFile == null || !csvFile.exists()) {
-      return ResponseEntity.status(404).body(Map.of("error", "No CSV has been generated yet"));
-    }
-
+  
+  @GetMapping(value="/matches/csv/{puuid}", produces = "text/csv")
+  public void downloadMatchCsv(@PathVariable String puuid, HttpServletResponse response){
     try {
-      InputStreamResource resource = new InputStreamResource(new FileInputStream(csvFile));
-      return ResponseEntity.ok()
-        .header("Content-Disposition", "attachment; filename=match_export.csv")
-        .header("Content-Type", "text/csv")
-        .body(resource);
-    } catch (IOException e) {
-      return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+      List<Match> matches = accountService.getCachedMatches(puuid);
+
+      // Set headers
+      response.setContentType("text/csv");
+      response.setHeader("Content-Disposition", "attachment; filename=match_history.csv");
+
+      // Write CSV
+      PrintWriter writer = response.getWriter();
+      writer.println("puuid,matchId,championName,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
+
+      for (Match m : matches) {
+        writer.printf("%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
+          m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getTeamPosition(), m.isWin(),
+          m.getKills(), m.getDeaths(), m.getAssists(),
+          m.getGoldEarned(), m.getGoldSpent(),
+          m.getCsPerMin(), m.getKda(),
+          m.getVisionScore(), m.getWardsPlaced(), m.getWardsKilled(),
+          m.getDamageDealtToChampions(), m.getTotalDamageTaken(),
+          m.getGameMode(), m.getQueueId(), m.getGameDuration(),
+          m.getTotalMinionsKilled(), m.getNeutralMinionsKilled(),
+          m.getTurretTakedowns(), m.getInhibitorTakedowns()
+        );
+      }
+
+      writer.flush();
+    } catch (Exception e) {
+      response.setStatus(500);
     }
   }
 }
