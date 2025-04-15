@@ -16,29 +16,37 @@ public class Player {
   @JsonProperty("tag_line")
   private String tagLine;
 
+  @JsonProperty("last_synced")
+  private String lastSynced;
+
+  @JsonProperty("profile_picture")
+  private String profileIconId;
+
 
   // Empty constructor for JBDC implementation
   public Player(){}
 
-  public Player(String puuid, String gameName, String tagline){
+  public Player(String puuid, String gameName, String tagline, String profileIconId){
     this.puuid = puuid;
     this.gameName = gameName;
     this.tagLine = tagline;
+    this.profileIconId = profileIconId;
   }
 
 
-  // Getters
   public String getPuuid() { return puuid; }
   public String getGameName() { return gameName; }
   public String getTagLine() { return tagLine; }
+  public String getProfileIconId() { return profileIconId; }
 
   // Setters
   public void setPuuid(String puuid) { this.puuid = puuid; }
   public void setGameName(String gameName) { this.gameName = gameName; }
-  public void setTagLine(String tagline) { this.tagLine = tagline; }
+  public void setTagLine(String tagLine) { this.tagLine = tagLine; }
+  public void setProfileIconId(String profileIconId) { this.profileIconId = profileIconId; }
 
   @Override
   public String toString() {
-      return gameName + "#" + tagLine + " (" + puuid + ")";
+    return gameName + "#" + tagLine + " (" + puuid + ") - Profile Picture: " + profileIconId;
   }
 }

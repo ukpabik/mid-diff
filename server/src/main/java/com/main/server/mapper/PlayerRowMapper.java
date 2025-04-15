@@ -15,6 +15,7 @@ public class PlayerRowMapper implements RowMapper<Player>{
     player.setGameName(rs.getString("game_name"));
     player.setPuuid(rs.getString("puuid"));
     player.setTagLine(rs.getString("tag_line"));
+    player.setProfileIconId(rs.getString("profile_picture"));
 
     return player;
   }

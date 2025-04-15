@@ -24,22 +24,24 @@ public class PlayerRepository {
   public int save(Player player) {
     return jdbcTemplate.update(connection -> {
       PreparedStatement ps = connection.prepareStatement(
-        "INSERT INTO players (puuid, game_name, tag_line) VALUES (?, ?, ?)"
+        "INSERT INTO players (puuid, game_name, tag_line, profile_picture) VALUES (?, ?, ?, ?)"
       );
       ps.setString(1, player.getPuuid());
       ps.setString(2, player.getGameName());
       ps.setString(3, player.getTagLine());
+      String profileIconId = player.getProfileIconId(); 
+      ps.setString(4, profileIconId);
       return ps;
     });
   }
   public int updatePlayer(Player player) {
-    String sql = "UPDATE players SET game_name = ?, tag_line = ? WHERE puuid = ?";
-
+    String sql = "UPDATE players SET game_name = ?, tag_line = ?, profile_picture = ? WHERE puuid = ?";
     return jdbcTemplate.update(connection -> {
       PreparedStatement ps = connection.prepareStatement(sql);
       ps.setString(1, player.getGameName());
       ps.setString(2, player.getTagLine());
-      ps.setString(3, player.getPuuid());
+      ps.setString(3, player.getProfileIconId());
+      ps.setString(4, player.getPuuid());
       return ps;
     });
   }

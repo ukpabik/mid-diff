@@ -33,7 +33,7 @@ export default function SearchForm() {
       const player = await searchPlayer(riotId, tagLine)
       router.push(`/player/${player.puuid}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to find player")
+      setError("Failed to find player")
     } finally {
       setIsLoading(false)
     }

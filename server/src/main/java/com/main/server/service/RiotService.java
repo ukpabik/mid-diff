@@ -112,9 +112,71 @@ public class RiotService {
   
     @SuppressWarnings("unchecked")
     Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
-    System.out.println(map); // optional: debug
   
     return Factory.mapToUser(map);
+  }
+
+  /**
+   * Retrieves user profile info by puuid (summoner icon, level, etc)
+   * @param puuid
+   * @return
+   * @throws Exception
+   */
+  public Player getUserProfileByPuuid(String puuid) throws Exception {
+    URI uri = UriComponentsBuilder
+        .fromUriString("https://na1.api.riotgames.com")
+        .path("/lol/summoner/v4/summoners/by-puuid/{puuid}")
+        .queryParam("api_key", apiKey)
+        .buildAndExpand(puuid)
+        .toUri();
+  
+    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
+    con.setRequestMethod("GET");
+    con.setRequestProperty("Content-Type", "application/json");
+    con.setConnectTimeout(5000);
+  
+    Reader streamReader = (con.getResponseCode() > 299)
+        ? new InputStreamReader(con.getErrorStream())
+        : new InputStreamReader(con.getInputStream());
+  
+    StringBuilder content = new StringBuilder();
+    try (BufferedReader in = new BufferedReader(streamReader)) {
+      String line;
+      while ((line = in.readLine()) != null) {
+        content.append(line);
+      }
+    }
+    con.disconnect();
+
+    System.out.println(content.toString());
+  
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
+  
+    // The Factory now maps the profileIconId into a profilePicture URL if available.
+    return Factory.mapToUser(map);
+  }
+
+
+  /**
+   * Returns the full profile with profile icon id for displaying summoner icons.
+   * 
+   * @param riotId
+   * @param tagLine
+   * @return
+   * @throws Exception
+   */
+  public Player getCompletePlayer(String riotId, String tagLine) throws Exception {
+    // Get basic player details
+    Player basicPlayer = getUserById(riotId, tagLine);
+    if (basicPlayer == null) {
+      throw new Exception("Basic player data not found");
+    }
+    // Get extended details (profile icon) using puuid.
+    Player extendedPlayer = getUserProfileByPuuid(basicPlayer.getPuuid());
+
+    basicPlayer.setProfileIconId(extendedPlayer.getProfileIconId());
+    return basicPlayer;
   }
   
   

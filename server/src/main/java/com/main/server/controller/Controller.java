@@ -124,7 +124,7 @@ public class Controller {
   public ResponseEntity<?> searchAndCache(@PathVariable String riotId, @PathVariable String tagLine) {
     try {
       // Get user from Riot
-      Player user = accountService.getUserById(riotId, tagLine);
+      Player user = accountService.getCompletePlayer(riotId, tagLine);
       // Upsert into db
       Player existing = databaseService.findByPuuid(user.getPuuid());
       if (existing == null) {

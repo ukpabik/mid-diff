@@ -21,11 +21,13 @@ export async function getPlayerFromDb(puuid: string): Promise<Player> {
     const error = await response.json()
     throw new Error(error.error || "Player not found")
   }
+  console.log(data.profile_picture)
 
   return {
     puuid: data.puuid,
     gameName: data.game_name,  // mapping game_name -> gameName
     tagLine: data.tag_line,    // mapping tag_line -> tagLine
+    profilePicture: data.profile_picture,
   };
 }
 

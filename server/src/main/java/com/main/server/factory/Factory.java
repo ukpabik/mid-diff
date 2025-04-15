@@ -20,7 +20,21 @@ public class Factory {
     String puuid = (String) data.get("puuid");
     String gameName = (String) data.get("gameName");
     String tagLine = (String) data.get("tagLine");
+    String profilePicture = null;
+    if (data.containsKey("profileIconId")) {
+      Object iconObj = data.get("profileIconId");
+      try {
+        int profileIconId = (iconObj instanceof Number)
+            ? ((Number) iconObj).intValue()
+            : Integer.parseInt(iconObj.toString());
+        String version = "13.23.1";
+        profilePicture = "https://ddragon.leagueoflegends.com/cdn/" + version
+          + "/img/profileicon/" + profileIconId + ".png";
+      } catch (NumberFormatException e) {
+        System.err.println("Error parsing profileIconId: " + iconObj);
+      }
+    }
 
-    return new Player(puuid, gameName, tagLine);
+    return new Player(puuid, gameName, tagLine, profilePicture);
   }
 }
