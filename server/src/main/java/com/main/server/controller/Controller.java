@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.main.server.model.Match;
 import com.main.server.model.Player;
+import com.main.server.model.RankInfo;
 import com.main.server.service.DatabaseService;
 import com.main.server.service.RiotService;
 
@@ -124,15 +125,21 @@ public class Controller {
   public ResponseEntity<?> searchAndCache(@PathVariable String riotId, @PathVariable String tagLine) {
     try {
       // Get user from Riot
-      Player user = accountService.getCompletePlayer(riotId, tagLine);
+      Player user = accountService.getCompletePlayer(riotId, tagLine); 
       // Upsert into db
       Player existing = databaseService.findByPuuid(user.getPuuid());
+      
       if (existing == null) {
         databaseService.saveUser(user);
       } else {
         databaseService.updateUser(user);
       }
       
+      // Save rank info
+      List<RankInfo> rankInfos = accountService.getRankInfoByPuuid(user.getPuuid());
+      for (RankInfo rankInfo : rankInfos){
+        accountService.saveRankInfo(rankInfo);
+      }
       // Fetch 20 recent match IDs (blocking)
       List<String> ids = accountService.getRecentMatchIds(user.getPuuid(), "ranked", 20);
       // Synchronously cache them
@@ -254,6 +261,16 @@ public class Controller {
       writer.flush();
     } catch (Exception e) {
       response.setStatus(500);
+    }
+  }
+
+
+  @GetMapping("/rank/{puuid}")
+  public ResponseEntity<?> getRankInfo(@PathVariable String puuid) {
+    try {
+      return ResponseEntity.ok(accountService.getRankInfoByPuuid(puuid));
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
   }
 }

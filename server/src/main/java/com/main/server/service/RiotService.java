@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,7 +22,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.main.server.factory.Factory;
 import com.main.server.model.Match;
 import com.main.server.model.Player;
+import com.main.server.model.RankInfo;
 import com.main.server.repository.MatchRepository;
+import com.main.server.repository.RankRepository;
 
 /**
  * Service responsible for interacting with Riot's external APIs to fetch and cache match data.
@@ -34,6 +37,8 @@ public class RiotService {
   private String apiKey;
   @Autowired
   private MatchRepository matchRepository;
+  @Autowired
+  private RankRepository rankRepository;
 
   private final ObjectMapper mapper = new ObjectMapper();
   
@@ -174,6 +179,53 @@ public class RiotService {
 
     basicPlayer.setProfileIconId(extendedPlayer.getProfileIconId());
     return basicPlayer;
+  }
+
+
+  /**
+   * Retrieves player rank data using the player's PUUID from Riot's API.
+   *
+   * @param puuid The player's unique identifier (PUUID) as provided by Riot.
+   * @return A {@link Player} object containing the player's rank information.
+   * @throws Exception if the Riot API request fails or if there is an error in parsing the JSON response.
+ */ 
+  public List<RankInfo> getRankInfoByPuuid(String puuid) throws Exception{
+    URI uri = UriComponentsBuilder
+    .fromUriString("https://na1.api.riotgames.com")
+    .path("/lol/league/v4/entries/by-puuid/{puuid}")
+    .queryParam("api_key", apiKey)
+    .buildAndExpand(puuid)
+    .toUri();
+
+    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
+    con.setRequestMethod("GET");
+    con.setRequestProperty("Content-Type", "application/json");
+    con.setConnectTimeout(5000);
+
+
+    Reader streamReader = (con.getResponseCode() > 299)
+        ? new InputStreamReader(con.getErrorStream())
+        : new InputStreamReader(con.getInputStream());
+  
+    StringBuilder content = new StringBuilder();
+    try (BufferedReader in = new BufferedReader(streamReader)) {
+      String line;
+      while ((line = in.readLine()) != null) {
+        content.append(line);
+      }
+    }
+    con.disconnect();
+  
+    List<Map<String, Object>> list = mapper.readValue(
+      content.toString(),
+      new TypeReference<List<Map<String, Object>>>() {}
+    );
+
+    List<RankInfo> rankInfos = new ArrayList<>();
+    for (Map<String, Object> data : list) {
+        rankInfos.add(Factory.mapToRankInfo(data));
+    }
+    return rankInfos;
   }
   
   
@@ -348,6 +400,15 @@ public class RiotService {
    */
   public List<Match> getAllMatches(){
     return matchRepository.findAll();
+  }
+
+  /**
+   * Takes the info and saves it into the database.
+   * @param info a {@link RankInfo} object
+   * @return A value indicating if it was successful or not
+   */
+  public int saveRankInfo(RankInfo info){
+    return rankRepository.save(info);
   }
 
   

@@ -33,3 +33,18 @@ export interface Match {
   csPerMin: number
   kda: number
 }
+
+export interface RankInfoEntry {
+  puuid: string;
+  queueType: "RANKED_SOLO_5x5" | "RANKED_FLEX_SR";
+  tier: string;
+  player_rank: string;
+  leaguePoints: number;
+  wins: number;
+  losses: number;
+}
+
+export interface RankInfo {
+  solo: RankInfoEntry;
+  flex: RankInfoEntry;
+}

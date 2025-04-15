@@ -1,11 +1,10 @@
-import type { Player, Match } from "./types"
+import type { Player, Match, RankInfoEntry } from "./types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/user";
 const FLASK_API_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
 export async function searchPlayer(riotId: string, tagLine: string): Promise<Player> {
   const response = await fetch(`${API_BASE_URL}/search/${riotId}/${tagLine}`);
   const data = await response.json();
-  console.log(data);
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || "Failed to find player")
@@ -21,14 +20,24 @@ export async function getPlayerFromDb(puuid: string): Promise<Player> {
     const error = await response.json()
     throw new Error(error.error || "Player not found")
   }
-  console.log(data.profile_picture)
 
   return {
     puuid: data.puuid,
-    gameName: data.game_name,  // mapping game_name -> gameName
-    tagLine: data.tag_line,    // mapping tag_line -> tagLine
+    gameName: data.game_name,
+    tagLine: data.tag_line,
     profilePicture: data.profile_picture,
   };
+}
+
+export async function getRankInfoFromDb(puuid: string): Promise<RankInfoEntry[]> {
+  const response = await fetch(`${API_BASE_URL}/rank/${puuid}`)
+  const data = await response.json();
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || "Player not found")
+  }
+
+  return data;
 }
 
 export async function getCachedMatches(puuid: string): Promise<Match[]> {
