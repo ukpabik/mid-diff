@@ -121,7 +121,7 @@ def get_training_data():
   # read all matches and load into one csv for ML model training
   url = f"http://localhost:8080/user/matches/csv/all"
   df = pd.read_csv(url)
-  df.drop(df.columns[[0, 1]], axis=1, inplace=True)
+  df.drop(df.columns[[0, 1, 3]], axis=1, inplace=True)
   dfs.append(df)
     
   full_df = pd.concat(dfs)

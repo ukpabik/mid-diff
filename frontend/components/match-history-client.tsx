@@ -140,6 +140,7 @@ function MatchCard({ match }: { match: Match }) {
         return position || "Unknown"
     }
   }
+  const championIconUrl = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${match.championId}.png`;
 
   const [advice, setAdvice] = useState<{
     advice: string
@@ -169,6 +170,11 @@ function MatchCard({ match }: { match: Match }) {
       <CardContent className="p-4">
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
           <div>
+            <img
+              src={championIconUrl}
+              alt={`Champion ${match.championName}`}
+              className="w-12 h-12 rounded mb-2"
+            />
             <div className="flex items-center gap-2 mb-2">
               <Badge variant={isWin ? "default" : "destructive"}>{isWin ? "Victory" : "Defeat"}</Badge>
               <span className="text-sm text-muted-foreground">

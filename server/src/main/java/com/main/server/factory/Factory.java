@@ -27,7 +27,7 @@ public class Factory {
         int profileIconId = (iconObj instanceof Number)
             ? ((Number) iconObj).intValue()
             : Integer.parseInt(iconObj.toString());
-        profilePicture = "https://opgg-static.akamaized.net/meta/images/profile_icons/profileIcon" + profileIconId + ".jpg?image=q_auto:good,f_webp,w_200&v=1744714939";
+        profilePicture = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/" + profileIconId + ".jpg";
       } catch (NumberFormatException e) {
         System.err.println("Error parsing profileIconId: " + iconObj);
       }

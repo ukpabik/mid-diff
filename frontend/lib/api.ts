@@ -3,15 +3,15 @@ import type { Player, Match } from "./types"
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/user";
 const FLASK_API_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
 export async function searchPlayer(riotId: string, tagLine: string): Promise<Player> {
-  console.log(riotId, tagLine);
   const response = await fetch(`${API_BASE_URL}/search/${riotId}/${tagLine}`);
-
+  const data = await response.json();
+  console.log(data);
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || "Failed to find player")
   }
 
-  return response.json()
+  return data;
 }
 
 export async function getPlayerFromDb(puuid: string): Promise<Player> {
@@ -52,6 +52,7 @@ export async function analyzeMatch(match: Match){
       body: JSON.stringify({
         matchId: match.matchId,
         championName: match.championName,
+        championId: match.championId,
         kills: match.kills,
         deaths: match.deaths,
         assists: match.assists,

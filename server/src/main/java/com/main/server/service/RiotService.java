@@ -73,7 +73,6 @@ public class RiotService {
     con.disconnect();
     @SuppressWarnings("unchecked")
     Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
-    System.out.println(map);
     return Factory.mapToUser(map);
   }
 
@@ -147,8 +146,6 @@ public class RiotService {
       }
     }
     con.disconnect();
-
-    System.out.println(content.toString());
   
     @SuppressWarnings("unchecked")
     Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
@@ -275,6 +272,7 @@ public class RiotService {
         m.setMatchId(meta.path("matchId").asText());
         m.setPuuid(puuid);
         m.setChampionName(p.path("championName").asText());
+        m.setChampionId(p.path("championId").asText());
         m.setTeamPosition(p.path("teamPosition").asText());
         m.setWin(p.path("win").asBoolean());
 
@@ -351,4 +349,6 @@ public class RiotService {
   public List<Match> getAllMatches(){
     return matchRepository.findAll();
   }
+
+  
 }

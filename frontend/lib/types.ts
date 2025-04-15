@@ -9,6 +9,7 @@ export interface Match {
   matchId: string
   puuid: string
   championName: string
+  championId: string
   teamPosition: string
   win: boolean
   kills: number

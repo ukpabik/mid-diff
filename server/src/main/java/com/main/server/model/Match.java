@@ -18,6 +18,9 @@ public class Match {
   @JsonProperty("championName")
   private String championName;
 
+  @JsonProperty("championId")
+  private String championId;
+
   @JsonProperty("teamPosition")
   private String teamPosition;
 
@@ -96,6 +99,9 @@ public class Match {
   public String getChampionName() { return championName; }
   public void setChampionName(String championName) { this.championName = championName; }
 
+  public String getChampionId() { return championId; }
+  public void setChampionId(String championId) { this.championId = championId; }
+
   public String getTeamPosition() { return teamPosition; }
   public void setTeamPosition(String teamPosition) { this.teamPosition = teamPosition; }
 
@@ -168,6 +174,7 @@ public class Match {
       "matchId='" + matchId + '\'' +
       ", puuid='" + puuid + '\'' +
       ", championName='" + championName + '\'' +
+      ", championId='" + championId + '\'' +
       ", teamPosition='" + teamPosition + '\'' +
       ", win=" + win +
       ", kills=" + kills +

@@ -35,14 +35,6 @@ export default function PlayerCard({ player }: PlayerCardProps) {
           <Badge variant="outline">#{player.tagLine}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="text-muted-foreground">PUUID</div>
-          <div className="truncate font-mono text-xs" title={player.puuid}>
-            {player.puuid.substring(0, 8)}...
-          </div>
-        </div>
-      </CardContent>
     </Card>
   )
 }

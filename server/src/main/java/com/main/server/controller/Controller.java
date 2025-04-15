@@ -135,7 +135,6 @@ public class Controller {
       
       // Fetch 20 recent match IDs (blocking)
       List<String> ids = accountService.getRecentMatchIds(user.getPuuid(), "ranked", 20);
-
       // Synchronously cache them
       accountService.cacheMissingMatches(ids, user.getPuuid());
 
@@ -182,19 +181,35 @@ public class Controller {
 
       // Write CSV
       PrintWriter writer = response.getWriter();
-      writer.println("puuid,matchId,championName,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
+      writer.println("puuid,matchId,championName,championId,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
 
       for (Match m : matches) {
-        writer.printf("%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
-          m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getTeamPosition(), m.isWin(),
-          m.getKills(), m.getDeaths(), m.getAssists(),
-          m.getGoldEarned(), m.getGoldSpent(),
-          m.getCsPerMin(), m.getKda(),
-          m.getVisionScore(), m.getWardsPlaced(), m.getWardsKilled(),
-          m.getDamageDealtToChampions(), m.getTotalDamageTaken(),
-          m.getGameMode(), m.getQueueId(), m.getGameDuration(),
-          m.getTotalMinionsKilled(), m.getNeutralMinionsKilled(),
-          m.getTurretTakedowns(), m.getInhibitorTakedowns()
+        writer.printf("%s,%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
+          m.getPuuid(),
+          m.getMatchId(),
+          m.getChampionName(),
+          m.getChampionId(),
+          m.getTeamPosition(),
+          m.isWin(),
+          m.getKills(),
+          m.getDeaths(),
+          m.getAssists(),
+          m.getGoldEarned(),
+          m.getGoldSpent(),
+          m.getCsPerMin(),
+          m.getKda(),
+          m.getVisionScore(),
+          m.getWardsPlaced(),
+          m.getWardsKilled(),
+          m.getDamageDealtToChampions(),
+          m.getTotalDamageTaken(),
+          m.getGameMode(),
+          m.getQueueId(),
+          m.getGameDuration(),
+          m.getTotalMinionsKilled(),
+          m.getNeutralMinionsKilled(),
+          m.getTurretTakedowns(),
+          m.getInhibitorTakedowns()
         );
       }
 
@@ -220,11 +235,11 @@ public class Controller {
 
       // Write CSV header
       PrintWriter writer = response.getWriter();
-      writer.println("puuid,matchId,championName,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
+      writer.println("puuid,matchId,championName,championId,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
 
       for (Match m : matches) {
-        writer.printf("%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
-          m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getTeamPosition(), m.isWin(),
+        writer.printf("%s,%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
+          m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getChampionId(), m.getTeamPosition(), m.isWin(),
           m.getKills(), m.getDeaths(), m.getAssists(),
           m.getGoldEarned(), m.getGoldSpent(),
           m.getCsPerMin(), m.getKda(),
@@ -241,5 +256,4 @@ public class Controller {
       response.setStatus(500);
     }
   }
-
 }

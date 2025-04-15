@@ -58,7 +58,7 @@ export default async function PlayerPage({
 
         <div>
           <Card className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Match History</h2>
+            <h2 className="text-2xl font-bold mb-4 text-center">Match History</h2>
             {error ? (
               <div className="text-center text-red-500">Failed to load matches</div>
             ) : (
