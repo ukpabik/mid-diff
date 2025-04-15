@@ -11,7 +11,6 @@ public class WebConfig implements WebMvcConfigurer {
   @Value("${spring.api.frontend.url}")
   private String frontendUrl;
 
-  // Should come back and change this after deploying
   @Override
   public void addCorsMappings(CorsRegistry registry) {
     registry.addMapping("/**")

@@ -16,13 +16,17 @@ export async function searchPlayer(riotId: string, tagLine: string): Promise<Pla
 
 export async function getPlayerFromDb(puuid: string): Promise<Player> {
   const response = await fetch(`${API_BASE_URL}/db/${puuid}`)
-
+  const data = await response.json();
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error || "Player not found")
   }
 
-  return response.json()
+  return {
+    puuid: data.puuid,
+    gameName: data.game_name,  // mapping game_name -> gameName
+    tagLine: data.tag_line,    // mapping tag_line -> tagLine
+  };
 }
 
 export async function getCachedMatches(puuid: string): Promise<Match[]> {

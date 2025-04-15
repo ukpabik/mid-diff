@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "League Player Lookup",
+  title: "middiff.gg",
   description: "Search for League of Legends players and view their match history",
 }
 

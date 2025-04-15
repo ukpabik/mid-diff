@@ -40,46 +40,52 @@ export default function SearchForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 p-4 bg-white rounded-lg shadow-sm">
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+        <Alert variant="destructive" className="bg-white mb-4">
+          <AlertCircle className="h-4 w-4 mr-2" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       <div className="grid gap-2">
-        <Label htmlFor="riotId">Riot ID</Label>
+        <Label htmlFor="riotId" className="font-medium text-gray-700">
+          Riot ID
+        </Label>
         <Input
           id="riotId"
           placeholder="TheBestMid"
           value={riotId}
           onChange={(e) => setRiotId(e.target.value)}
           disabled={isLoading}
+          className="border text-black focus:border-blue-500 focus:ring focus:ring-blue-200"
         />
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="tagLine">Tagline</Label>
+        <Label htmlFor="tagLine" className="font-medium text-gray-700">
+          Tagline
+        </Label>
         <Input
           id="tagLine"
           placeholder="NA1"
           value={tagLine}
           onChange={(e) => setTagLine(e.target.value)}
           disabled={isLoading}
+          className="border text-black focus:border-blue-500 focus:ring focus:ring-blue-200"
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
         {isLoading ? (
-          <>
+          <div className="flex items-center justify-center">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Searching...
-          </>
+          </div>
         ) : (
           "Search Player"
         )}
       </Button>
     </form>
-  )
+  );
 }
