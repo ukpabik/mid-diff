@@ -65,16 +65,19 @@ export default function SearchForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-4 bg-white rounded-lg shadow-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 p-6 bg-white/20 backdrop-blur-md rounded-xl shadow-lg border border-white/30"
+      >
       {error && (
-        <Alert variant="destructive" className="bg-white mb-4">
+        <Alert variant="destructive" className="bg-white/20 backdrop-blur-md mb-4">
           <AlertCircle className="h-4 w-4 mr-2" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       <div className="grid gap-2">
-        <Label htmlFor="riotId" className="font-medium text-gray-700">
+        <Label htmlFor="riotId" className="font-medium text-white">
           Riot ID
         </Label>
         <Input
@@ -83,12 +86,12 @@ export default function SearchForm() {
           value={riotId}
           onChange={(e) => setRiotId(e.target.value)}
           disabled={isLoading}
-          className="border text-black focus:border-blue-500 focus:ring focus:ring-blue-200"
+          className="border text-white focus:border-blue-500 focus:ring focus:ring-blue-200"
         />
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="tagLine" className="font-medium text-gray-700">
+        <Label htmlFor="tagLine" className="font-medium text-white">
           Tagline
         </Label>
         <Input
@@ -97,11 +100,11 @@ export default function SearchForm() {
           value={tagLine}
           onChange={(e) => setTagLine(e.target.value)}
           disabled={isLoading}
-          className="border text-black focus:border-blue-500 focus:ring focus:ring-blue-200"
+          className="border text-white focus:border-blue-500 focus:ring focus:ring-blue-200"
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="region" className="font-medium text-gray-700">
+        <Label htmlFor="region" className="font-medium text-white">
           Region
         </Label>
         <select
@@ -109,7 +112,7 @@ export default function SearchForm() {
           value={region}
           onChange={(e) => setRegion(e.target.value)}
           disabled={isLoading}
-          className="border text-black px-3 py-2 rounded-md focus:border-blue-500 focus:ring focus:ring-blue-200"
+          className="border text-gray-200 px-3 py-2 rounded-md focus:border-blue-500 focus:ring focus:ring-blue-200"
         >
           {regions.map((r) => (
             <option key={r} value={r}>
@@ -119,7 +122,7 @@ export default function SearchForm() {
         </select>
       </div>
 
-      <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
+      <Button type="submit" className="w-full bg-blue-600/70 hover:bg-blue-700 text-white" disabled={isLoading}>
         {isLoading ? (
           <div className="flex items-center justify-center">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
