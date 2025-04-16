@@ -12,11 +12,15 @@ export const dynamic = "force-dynamic";
 
 export default async function PlayerPage({
   params,
+  searchParams
 }: {
   params: Promise<{ puuid: string }>;
+  searchParams: Promise<{ region: string }>;
 }) {
   try {
     const { puuid } = await params;
+    const { region } = await searchParams;
+    const effectiveRegion = region || "na1";
 
     let player = null;
     let error = null;
@@ -52,7 +56,7 @@ export default async function PlayerPage({
               <div className="text-center text-red-500">{error}</div>
             </Card>
           ) : (
-            <PlayerCard player={player} />
+            <PlayerCard player={player} region={effectiveRegion}/>
           )}
         </div>
 

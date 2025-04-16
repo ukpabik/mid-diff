@@ -51,9 +51,10 @@ public class RiotService {
    * @return the {@link Player} object with Riot identifiers
    * @throws Exception if the Riot API request or parsing fails
    */
-  public Player getUserById(String id, String tagLine) throws Exception {
+  public Player getUserById(String id, String tagLine, String region) throws Exception {
+    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-      .fromUriString("https://americas.api.riotgames.com")
+      .fromUriString(uriString)
       .path("/riot/account/v1/accounts/by-riot-id/{riotId}/{tagline}")
       .queryParam("api_key", apiKey)
       .buildAndExpand(id, tagLine)
@@ -88,9 +89,10 @@ public class RiotService {
    * @return the {@link Player} object with Riot identifiers
    * @throws Exception if the Riot API request or parsing fails
    */
-  public Player getUserByPuuid(String puuid) throws Exception {
+  public Player getUserByPuuid(String puuid, String region) throws Exception {
+    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-      .fromUriString("https://americas.api.riotgames.com")
+      .fromUriString(uriString)
       .path("/riot/account/v1/accounts/by-puuid/{puuid}")
       .queryParam("api_key", apiKey)
       .buildAndExpand(puuid)
@@ -126,7 +128,8 @@ public class RiotService {
    * @return
    * @throws Exception
    */
-  public Player getUserProfileByPuuid(String puuid) throws Exception {
+  public Player getUserProfileByPuuid(String puuid, String region) throws Exception {
+    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
         .fromUriString("https://na1.api.riotgames.com")
         .path("/lol/summoner/v4/summoners/by-puuid/{puuid}")
@@ -168,14 +171,14 @@ public class RiotService {
    * @return
    * @throws Exception
    */
-  public Player getCompletePlayer(String riotId, String tagLine) throws Exception {
+  public Player getCompletePlayer(String riotId, String tagLine, String region) throws Exception {
     // Get basic player details
-    Player basicPlayer = getUserById(riotId, tagLine);
+    Player basicPlayer = getUserById(riotId, tagLine, region);
     if (basicPlayer == null) {
       throw new Exception("Basic player data not found");
     }
     // Get extended details (profile icon) using puuid.
-    Player extendedPlayer = getUserProfileByPuuid(basicPlayer.getPuuid());
+    Player extendedPlayer = getUserProfileByPuuid(basicPlayer.getPuuid(), region);
 
     basicPlayer.setProfileIconId(extendedPlayer.getProfileIconId());
     return basicPlayer;
@@ -189,9 +192,10 @@ public class RiotService {
    * @return A {@link Player} object containing the player's rank information.
    * @throws Exception if the Riot API request fails or if there is an error in parsing the JSON response.
  */ 
-  public List<RankInfo> getRankInfoByPuuid(String puuid) throws Exception{
+  public List<RankInfo> getRankInfoByPuuid(String puuid, String region) throws Exception{
+    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-    .fromUriString("https://na1.api.riotgames.com")
+    .fromUriString(uriString)
     .path("/lol/league/v4/entries/by-puuid/{puuid}")
     .queryParam("api_key", apiKey)
     .buildAndExpand(puuid)
@@ -239,9 +243,10 @@ public class RiotService {
    * @return a list of match ID strings
    * @throws Exception if the Riot API request or parsing fails
    */
-  public List<String> getRecentMatchIds(String puuid, String type, int count) throws Exception {
+  public List<String> getRecentMatchIds(String puuid, String type, String region, int count) throws Exception {
+    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-      .fromUriString("https://americas.api.riotgames.com")
+      .fromUriString(uriString)
       .path("/lol/match/v5/matches/by-puuid/{puuid}/ids")
       .queryParam("api_key", apiKey)
       .queryParam("type", type)
@@ -277,9 +282,10 @@ public class RiotService {
    * @return a {@link JsonNode} representing the entire match payload
    * @throws Exception if the Riot API request or parsing fails
    */
-  public JsonNode getMatchById(String matchId) throws Exception {
+  public JsonNode getMatchById(String matchId, String region) throws Exception {
+    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-      .fromUriString("https://americas.api.riotgames.com")
+      .fromUriString(uriString)
       .path("/lol/match/v5/matches/{matchId}")
       .queryParam("api_key", apiKey)
       .buildAndExpand(matchId)
@@ -372,12 +378,12 @@ public class RiotService {
    * @param puuid the player's PUUID
    * @throws Exception if any match fails to fetch
    */
-  public void cacheMissingMatches(List<String> ids, String puuid) throws Exception {
+  public void cacheMissingMatches(List<String> ids, String puuid, String region) throws Exception {
     Set<String> existing = matchRepository.findExistingMatchIds(ids);
 
     for (String id : ids) {
       if (!existing.contains(id)) {
-        JsonNode match = getMatchById(id);
+        JsonNode match = getMatchById(id, region);
         cacheMatch(match, puuid);
       }
     }

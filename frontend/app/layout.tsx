@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "middiff.gg",
-  description: "Search for League of Legends players and view their match history",
+  description: "Get ML-powered analysis on your League of Legends gameplay!",
 }
 
 export default function RootLayout({

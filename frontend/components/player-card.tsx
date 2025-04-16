@@ -56,9 +56,10 @@ function RankCard({ entry }: { entry: RankInfoEntry }) {
 
 interface PlayerCardProps {
   player: Player | null;
+  region: string;
 }
 
-export default function PlayerCard({ player }: PlayerCardProps) {
+export default function PlayerCard({ player, region }: PlayerCardProps) {
   const [rankInfo, setRankInfo] = useState<RankInfoEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +67,7 @@ export default function PlayerCard({ player }: PlayerCardProps) {
     async function fetchRankInfo() {
       if (player) {
         try {
-          const ranks = await getRankInfoFromDb(player.puuid);
+          const ranks = await getRankInfoFromDb(player.puuid, region);
           const sortedRanks = [...ranks].sort((a, b) => {
             if (a.queueType === "RANKED_SOLO_5x5") return -1;
             if (b.queueType === "RANKED_SOLO_5x5") return 1;
@@ -106,8 +107,8 @@ export default function PlayerCard({ player }: PlayerCardProps) {
       <CardContent>
         {rankInfo ? (
           <div className="space-y-4">
-            {rankInfo.map((entry, idx) => (
-              <RankCard key={idx} entry={entry} />
+            {rankInfo.map((entry) => (
+              <RankCard key={entry.queueType} entry={entry} />
             ))}
           </div>
         ) : (

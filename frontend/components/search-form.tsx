@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -11,9 +10,34 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { searchPlayer } from "@/lib/api"
 
+
+
+const regions = [
+  "br1", "eun1", "euw1", "jp1", "kr", "la1", "la2",
+  "me1", "na1", "oc1", "ru", "sg2", "tr1", "tw2", "vn2"
+];
+const routingRegionMap: Record<string, "americas" | "europe" | "asia"> = {
+  na1: "americas",
+  br1: "americas",
+  la1: "americas",
+  la2: "americas",
+  oc1: "americas",
+  kr: "asia",
+  jp1: "asia",
+  sg2: "asia",
+  tw2: "asia",
+  vn2: "asia",
+  eun1: "europe",
+  euw1: "europe",
+  tr1: "europe",
+  ru: "europe",
+  me1: "europe",
+};
+
 export default function SearchForm() {
   const router = useRouter()
   const [riotId, setRiotId] = useState("")
+  const [region, setRegion] = useState("na1"); 
   const [tagLine, setTagLine] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,8 +54,9 @@ export default function SearchForm() {
     setError(null)
 
     try {
-      const player = await searchPlayer(riotId, tagLine)
-      router.push(`/player/${player.puuid}`)
+      const routingRegion = routingRegionMap[region];
+      const player = await searchPlayer(riotId, tagLine, region, routingRegion)
+      router.push(`/player/${player.puuid}?region=${region}`)
     } catch (err) {
       setError("Failed to find player")
     } finally {
@@ -74,6 +99,24 @@ export default function SearchForm() {
           disabled={isLoading}
           className="border text-black focus:border-blue-500 focus:ring focus:ring-blue-200"
         />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="region" className="font-medium text-gray-700">
+          Region
+        </Label>
+        <select
+          id="region"
+          value={region}
+          onChange={(e) => setRegion(e.target.value)}
+          disabled={isLoading}
+          className="border text-black px-3 py-2 rounded-md focus:border-blue-500 focus:ring focus:ring-blue-200"
+        >
+          {regions.map((r) => (
+            <option key={r} value={r}>
+              {r.toUpperCase()}
+            </option>
+          ))}
+        </select>
       </div>
 
       <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
