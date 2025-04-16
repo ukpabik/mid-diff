@@ -12,7 +12,16 @@ export default function Home() {
         disablePictureInPicture
         className="absolute inset-0 w-full h-full object-cover z-[-1]"
       >
-        <source src="/videos/background.mp4" type="video/mp4" />
+        <source
+          src="/videos/background-mobile.mp4"
+          type="video/mp4"
+          media="(max-width: 640px)"
+        />
+        <source
+          src="/videos/background.mp4"
+          type="video/mp4"
+        />
+        Your browser does not support the video tag.
       </video>
       <div className="fixed top-0 left-0 w-full h-full bg-black/50 z-[-1]" />
 
