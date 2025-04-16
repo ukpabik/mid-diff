@@ -1,5 +1,6 @@
 package com.main.server.controller;
 import java.io.PrintWriter;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,9 @@ import com.main.server.model.RankInfo;
 import com.main.server.service.DatabaseService;
 import com.main.server.service.RiotService;
 
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -34,12 +38,18 @@ public class Controller {
   private final DatabaseService databaseService;
   private final RiotService accountService;
 
+  private final Bucket bucket;
+
   @Value("${spring.api.backend.key}")
   private String backendApiKey;
 
   public Controller(DatabaseService databaseService, RiotService accountService){
     this.databaseService = databaseService;
     this.accountService = accountService;
+    Bandwidth limit = Bandwidth.classic(50, Refill.greedy(50, Duration.ofMinutes(1)));
+    this.bucket = Bucket.builder()
+    .addLimit(limit)
+    .build();
   }
 
   /**
@@ -62,8 +72,13 @@ public class Controller {
   public ResponseEntity<?> getUser(@PathVariable String riotId, @PathVariable String tagLine, @PathVariable String region, HttpServletRequest request) {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
-      Player user = accountService.getUserById(riotId, tagLine, region);
-      return ResponseEntity.ok(user);
+      if (bucket.tryConsume(1)){
+        Player user = accountService.getUserById(riotId, tagLine, region);
+        return ResponseEntity.ok(user);
+      }
+      else{
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+      }
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
@@ -79,8 +94,13 @@ public class Controller {
   public ResponseEntity<?> getUserByPuuid(@PathVariable String puuid, @PathVariable String region, HttpServletRequest request) {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
-      Player user = accountService.getUserByPuuid(puuid, region);
-      return ResponseEntity.ok(user);
+      if (bucket.tryConsume(1)){
+        Player user = accountService.getUserByPuuid(puuid, region);
+        return ResponseEntity.ok(user);
+      }
+      else{
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+      }
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
@@ -96,11 +116,16 @@ public class Controller {
   public ResponseEntity<?> getUserFromDb(@PathVariable String puuid, HttpServletRequest request) {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
-      Player player = databaseService.findByPuuid(puuid);
-      if (player != null){
-        return ResponseEntity.ok(player);
+      if (bucket.tryConsume(1)){
+        Player player = databaseService.findByPuuid(puuid);
+        if (player != null){
+          return ResponseEntity.ok(player);
+        }
+        throw new Exception("Not found");
       }
-      throw new Exception("Not found");
+      else{
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+      }
     } catch (Exception e) {
       return ResponseEntity.status(404).body(Map.of("error", "Player not found"));
     }
@@ -116,13 +141,18 @@ public class Controller {
   public ResponseEntity<?> upsertUser(@RequestBody Player user, HttpServletRequest request){
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
-      Player existingUser = databaseService.findByPuuid(user.getPuuid());
-      if (existingUser == null) {
-        databaseService.saveUser(user);
-      } else {
-        databaseService.updateUser(user);
+      if (bucket.tryConsume(1)){
+        Player existingUser = databaseService.findByPuuid(user.getPuuid());
+        if (existingUser == null) {
+          databaseService.saveUser(user);
+        } else {
+          databaseService.updateUser(user);
+        }
+        return ResponseEntity.ok(user);
       }
-      return ResponseEntity.ok(user);
+      else{
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+      }
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
@@ -143,20 +173,25 @@ public class Controller {
   public ResponseEntity<?> searchAndCache(@PathVariable String riotId, @PathVariable String tagLine, @PathVariable String platformRegion, @PathVariable String routingRegion, HttpServletRequest request) {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
-      Player user = accountService.getCompletePlayer(riotId, tagLine, routingRegion); 
-      Player existing = databaseService.findByPuuid(user.getPuuid());
-      if (existing == null) {
-        databaseService.saveUser(user);
-      } else {
-        databaseService.updateUser(user);
+      if (bucket.tryConsume(1)){
+        Player user = accountService.getCompletePlayer(riotId, tagLine, routingRegion); 
+        Player existing = databaseService.findByPuuid(user.getPuuid());
+        if (existing == null) {
+          databaseService.saveUser(user);
+        } else {
+          databaseService.updateUser(user);
+        }
+        List<RankInfo> rankInfos = accountService.getRankInfoByPuuid(user.getPuuid(), platformRegion);
+        for (RankInfo rankInfo : rankInfos){
+          accountService.saveRankInfo(rankInfo);
+        }
+        List<String> ids = accountService.getRecentMatchIds(user.getPuuid(), "ranked", routingRegion, 20);
+        accountService.cacheMissingMatches(ids, user.getPuuid(), routingRegion);
+        return ResponseEntity.ok(user);
       }
-      List<RankInfo> rankInfos = accountService.getRankInfoByPuuid(user.getPuuid(), platformRegion);
-      for (RankInfo rankInfo : rankInfos){
-        accountService.saveRankInfo(rankInfo);
+      else{
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
       }
-      List<String> ids = accountService.getRecentMatchIds(user.getPuuid(), "ranked", routingRegion, 20);
-      accountService.cacheMissingMatches(ids, user.getPuuid(), routingRegion);
-      return ResponseEntity.ok(user);
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
@@ -173,7 +208,12 @@ public class Controller {
   public ResponseEntity<?> getCachedMatches(@PathVariable String puuid, HttpServletRequest request) {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
-      return ResponseEntity.ok(accountService.getCachedMatches(puuid));
+      if (bucket.tryConsume(1)){
+        return ResponseEntity.ok(accountService.getCachedMatches(puuid));
+      }
+      else{
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+      }
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
@@ -193,20 +233,25 @@ public class Controller {
       return;
     }
     try {
-      List<Match> matches = accountService.getCachedMatches(puuid);
-      response.setContentType("text/csv");
-      response.setHeader("Content-Disposition", "attachment; filename=match_history.csv");
-      PrintWriter writer = response.getWriter();
-      writer.println("puuid,matchId,championName,championId,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
-      for (Match m : matches) {
-        writer.printf("%s,%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
-          m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getChampionId(), m.getTeamPosition(), m.isWin(),
-          m.getKills(), m.getDeaths(), m.getAssists(), m.getGoldEarned(), m.getGoldSpent(), m.getCsPerMin(),
-          m.getKda(), m.getVisionScore(), m.getWardsPlaced(), m.getWardsKilled(), m.getDamageDealtToChampions(),
-          m.getTotalDamageTaken(), m.getGameMode(), m.getQueueId(), m.getGameDuration(), m.getTotalMinionsKilled(),
-          m.getNeutralMinionsKilled(), m.getTurretTakedowns(), m.getInhibitorTakedowns());
+      if (bucket.tryConsume(1)){
+        List<Match> matches = accountService.getCachedMatches(puuid);
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=match_history.csv");
+        PrintWriter writer = response.getWriter();
+        writer.println("puuid,matchId,championName,championId,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
+        for (Match m : matches) {
+          writer.printf("%s,%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
+            m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getChampionId(), m.getTeamPosition(), m.isWin(),
+            m.getKills(), m.getDeaths(), m.getAssists(), m.getGoldEarned(), m.getGoldSpent(), m.getCsPerMin(),
+            m.getKda(), m.getVisionScore(), m.getWardsPlaced(), m.getWardsKilled(), m.getDamageDealtToChampions(),
+            m.getTotalDamageTaken(), m.getGameMode(), m.getQueueId(), m.getGameDuration(), m.getTotalMinionsKilled(),
+            m.getNeutralMinionsKilled(), m.getTurretTakedowns(), m.getInhibitorTakedowns());
+        }
+        writer.flush();
       }
-      writer.flush();
+      else{
+        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+      }
     } catch (Exception e) {
       response.setStatus(500);
     }
@@ -224,20 +269,25 @@ public class Controller {
       return;
     }
     try {
-      List<Match> matches = accountService.getAllMatches(); 
-      response.setContentType("text/csv");
-      response.setHeader("Content-Disposition", "attachment; filename=training_dataset.csv");
-      PrintWriter writer = response.getWriter();
-      writer.println("puuid,matchId,championName,championId,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
-      for (Match m : matches) {
-        writer.printf("%s,%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
-          m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getChampionId(), m.getTeamPosition(), m.isWin(),
-          m.getKills(), m.getDeaths(), m.getAssists(), m.getGoldEarned(), m.getGoldSpent(), m.getCsPerMin(),
-          m.getKda(), m.getVisionScore(), m.getWardsPlaced(), m.getWardsKilled(), m.getDamageDealtToChampions(),
-          m.getTotalDamageTaken(), m.getGameMode(), m.getQueueId(), m.getGameDuration(), m.getTotalMinionsKilled(),
-          m.getNeutralMinionsKilled(), m.getTurretTakedowns(), m.getInhibitorTakedowns());
+      if (bucket.tryConsume(1)){
+        List<Match> matches = accountService.getAllMatches(); 
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=training_dataset.csv");
+        PrintWriter writer = response.getWriter();
+        writer.println("puuid,matchId,championName,championId,teamPosition,win,kills,deaths,assists,goldEarned,goldSpent,csPerMin,kda,visionScore,wardsPlaced,wardsKilled,damageDealtToChampions,totalDamageTaken,gameMode,queueId,gameDuration,totalMinionsKilled,neutralMinionsKilled,turretTakedowns,inhibitorTakedowns");
+        for (Match m : matches) {
+          writer.printf("%s,%s,%s,%s,%s,%b,%d,%d,%d,%d,%d,%.15f,%.15f,%d,%d,%d,%d,%d,%s,%d,%d,%d,%d,%d,%d\n",
+            m.getPuuid(), m.getMatchId(), m.getChampionName(), m.getChampionId(), m.getTeamPosition(), m.isWin(),
+            m.getKills(), m.getDeaths(), m.getAssists(), m.getGoldEarned(), m.getGoldSpent(), m.getCsPerMin(),
+            m.getKda(), m.getVisionScore(), m.getWardsPlaced(), m.getWardsKilled(), m.getDamageDealtToChampions(),
+            m.getTotalDamageTaken(), m.getGameMode(), m.getQueueId(), m.getGameDuration(), m.getTotalMinionsKilled(),
+            m.getNeutralMinionsKilled(), m.getTurretTakedowns(), m.getInhibitorTakedowns());
+        }
+        writer.flush();
       }
-      writer.flush();
+      else{
+        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+      }
     } catch (Exception e) {
       response.setStatus(500);
     }
@@ -253,7 +303,13 @@ public class Controller {
   public ResponseEntity<?> getRankInfo(@PathVariable String puuid, @PathVariable String region, HttpServletRequest request) {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
-      return ResponseEntity.ok(accountService.getRankInfoByPuuid(puuid, region));
+      if (bucket.tryConsume(1)){
+        return ResponseEntity.ok(accountService.getRankInfoByPuuid(puuid, region));
+      }
+      else{
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+      }
+      
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
