@@ -8,7 +8,9 @@ export default function Home() {
         loop
         muted
         playsInline
-        className="fixed top-0 left-0 w-full h-full object-cover z-[-1]"
+        preload="auto"
+        disablePictureInPicture
+        className="absolute inset-0 w-full h-full object-cover z-[-1]"
       >
         <source src="/videos/background.mp4" type="video/mp4" />
       </video>
