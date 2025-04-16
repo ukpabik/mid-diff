@@ -67,7 +67,7 @@ export default function SearchForm() {
   return (
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 p-6 bg-white/10 backdrop-blur-md rounded-xl shadow-lg border border-white/30"
+        className="space-y-6 p-6 bg-white/10 backdrop-blur-sm rounded-xl shadow-lg border border-white/30"
       >
       {error && (
         <Alert variant="destructive" className="bg-white/20 backdrop-blur-md mb-4">
