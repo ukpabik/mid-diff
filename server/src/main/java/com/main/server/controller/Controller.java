@@ -46,7 +46,7 @@ public class Controller {
   public Controller(DatabaseService databaseService, RiotService accountService){
     this.databaseService = databaseService;
     this.accountService = accountService;
-    Bandwidth limit = Bandwidth.classic(50, Refill.greedy(50, Duration.ofMinutes(1)));
+    Bandwidth limit = Bandwidth.classic(50, Refill.greedy(100, Duration.ofMinutes(1)));
     this.bucket = Bucket.builder()
     .addLimit(limit)
     .build();
@@ -174,7 +174,7 @@ public class Controller {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
       if (bucket.tryConsume(1)){
-        Player user = accountService.getCompletePlayer(riotId, tagLine, routingRegion); 
+        Player user = accountService.getCompletePlayer(riotId, tagLine, platformRegion, routingRegion);
         Player existing = databaseService.findByPuuid(user.getPuuid());
         if (existing == null) {
           databaseService.saveUser(user);

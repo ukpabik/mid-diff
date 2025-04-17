@@ -5,10 +5,14 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,6 +30,10 @@ import com.main.server.model.RankInfo;
 import com.main.server.repository.MatchRepository;
 import com.main.server.repository.RankRepository;
 
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.BlockingBucket;
+import io.github.bucket4j.Bucket;
+
 /**
  * Service responsible for interacting with Riot's external APIs to fetch and cache match data.
  * It also supports asynchronous caching and querying of existing match data in Supabase.
@@ -35,281 +43,200 @@ public class RiotService {
 
   @Value("${spring.api.riot.key}")
   private String apiKey;
-  @Autowired
-  private MatchRepository matchRepository;
-  @Autowired
-  private RankRepository rankRepository;
+
+  @Autowired private MatchRepository matchRepository;
+  @Autowired private RankRepository rankRepository;
 
   private final ObjectMapper mapper = new ObjectMapper();
-  
+
+  private static final BlockingBucket RIOT_BUCKET = Bucket.builder()
+    .addLimit(Bandwidth.simple(20,  Duration.ofSeconds(1)))   // dev key
+    .addLimit(Bandwidth.simple(100, Duration.ofMinutes(2)))  // dev key
+    .build()
+    .asBlocking();
+
 
   /**
-   * Fetches basic player data (gameName, tagLine, puuid) from Riot API using Riot ID and tagline.
+   * Executes the supplied {@link Callable} after consuming a single token from the bucket.  If the
+   * callable throws {@link Riot429Exception} the helper waits the specified {@code Retry‑After}
+   * interval, consumes another token and retries once.
    *
-   * @param id      the Riot username (e.g., "Faker")
-   * @param tagLine the user's tagline (e.g., "KR1")
-   * @return the {@link Player} object with Riot identifiers
-   * @throws Exception if the Riot API request or parsing fails
+   * @param task blocking I/O task that performs the HTTP request
+   * @param <T>  type of the value returned by the task
+   * @return result of {@code task.call()}
+   * @throws Exception any exception thrown by the task after one retry attempt
+   */
+  private <T> T withLimit(Callable<T> task) throws Exception {
+      RIOT_BUCKET.consumeUninterruptibly(1);
+      try {
+        return task.call();
+      } 
+      catch (Riot429Exception e) {
+        Thread.sleep(e.retryAfterSeconds() * 1_000L);
+        RIOT_BUCKET.consumeUninterruptibly(1);
+        return task.call();
+      }
+  }
+
+  /**
+   * Reads the full response body (success or error) from {@code con} into a single {@link String}.
+  */
+  private String readBody(HttpURLConnection con) throws Exception {
+      Reader r = new InputStreamReader(
+        con.getResponseCode() > 299 ? con.getErrorStream() : con.getInputStream());
+      try (BufferedReader br = new BufferedReader(r)) {
+        return br.lines().collect(Collectors.joining());
+      }
+  }
+
+
+  /**
+   * Performs a GET request to Riot, respecting rate limits and handling HTTP 429.
+   *
+   * @param uri Riot API URI, including the {@code api_key} query param
+   * @return parsed {@link JsonNode} body
+   * @throws Exception network I/O errors, JSON parse errors, or unrecoverable 429
+   */
+  private JsonNode riotGet(URI uri) throws Exception {
+    return withLimit(() -> {
+      HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
+      con.setRequestMethod("GET");
+      con.setRequestProperty("Content-Type", "application/json");
+      con.setConnectTimeout(5_000);
+
+      int code = con.getResponseCode();
+      if (code == 429) {
+          long retry = Optional.ofNullable(con.getHeaderField("Retry-After"))
+                                .map(Long::parseLong).orElse(1L);
+          con.disconnect();
+          throw new Riot429Exception(retry);
+      }
+      String body = readBody(con);
+      con.disconnect();
+      return mapper.readTree(body);
+    });
+  }
+
+  /**
+   * Fetches basic player identifiers (gameName, tagLine, PUUID) using Riot‑ID + tagline.
+   *
+   * @param id      Riot username (e.g. "Faker")
+   * @param tagLine Tagline (e.g. "KR1")
+   * @param region  Platform region (na1, euw1, …)
+   * @return mapped {@link Player}
    */
   public Player getUserById(String id, String tagLine, String region) throws Exception {
-    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-      .fromUriString(uriString)
-      .path("/riot/account/v1/accounts/by-riot-id/{riotId}/{tagline}")
+      .fromUriString("https://" + region + ".api.riotgames.com")
+      .path("/riot/account/v1/accounts/by-riot-id/{id}/{tag}")
       .queryParam("api_key", apiKey)
       .buildAndExpand(id, tagLine)
       .toUri();
 
-    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
-    con.setRequestMethod("GET");
-    con.setRequestProperty("Content-Type", "application/json");
-    con.setConnectTimeout(5000);
-
-    Reader streamReader = (con.getResponseCode() > 299)
-      ? new InputStreamReader(con.getErrorStream())
-      : new InputStreamReader(con.getInputStream());
-
-    StringBuilder content = new StringBuilder();
-    try (BufferedReader in = new BufferedReader(streamReader)) {
-      String line;
-      while ((line = in.readLine()) != null) {
-          content.append(line);
-      }
-    }
-    con.disconnect();
-    @SuppressWarnings("unchecked")
-    Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
+    Map<String, Object> map = mapper.convertValue(riotGet(uri), new TypeReference<>() {});
     return Factory.mapToUser(map);
   }
 
   /**
-   * Fetches basic player data (gameName, tagLine, puuid) from Riot API using their puuid.
+   * Fetches basic player identifiers using a PUUID.
    *
-   * @param puuid
-   * @return the {@link Player} object with Riot identifiers
-   * @throws Exception if the Riot API request or parsing fails
+   * @param puuid  Riot PUUID
+   * @param region Platform region
    */
   public Player getUserByPuuid(String puuid, String region) throws Exception {
-    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-      .fromUriString(uriString)
+      .fromUriString("https://" + region + ".api.riotgames.com")
       .path("/riot/account/v1/accounts/by-puuid/{puuid}")
       .queryParam("api_key", apiKey)
       .buildAndExpand(puuid)
       .toUri();
-  
-    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
-    con.setRequestMethod("GET");
-    con.setRequestProperty("Content-Type", "application/json");
-    con.setConnectTimeout(5000);
-  
-    Reader streamReader = (con.getResponseCode() > 299)
-      ? new InputStreamReader(con.getErrorStream())
-      : new InputStreamReader(con.getInputStream());
-  
-    StringBuilder content = new StringBuilder();
-    try (BufferedReader in = new BufferedReader(streamReader)) {
-      String line;
-      while ((line = in.readLine()) != null) {
-        content.append(line);
-      }
-    }
-    con.disconnect();
-  
-    @SuppressWarnings("unchecked")
-    Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
-  
+
+    Map<String, Object> map = mapper.convertValue(riotGet(uri), new TypeReference<>() {});
     return Factory.mapToUser(map);
   }
 
   /**
-   * Retrieves user profile info by puuid (summoner icon, level, etc)
-   * @param puuid
-   * @return
-   * @throws Exception
+   * Retrieves profile‑level data (icon ID, level, etc.) from Summoner‑V4 by PUUID.
    */
-  public Player getUserProfileByPuuid(String puuid, String region) throws Exception {
-    String uriString = "https://" + region + ".api.riotgames.com";
+  public Player getUserProfileByPuuid(String puuid, String platformRegion) throws Exception {
     URI uri = UriComponentsBuilder
-        .fromUriString("https://na1.api.riotgames.com")
-        .path("/lol/summoner/v4/summoners/by-puuid/{puuid}")
-        .queryParam("api_key", apiKey)
-        .buildAndExpand(puuid)
-        .toUri();
-  
-    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
-    con.setRequestMethod("GET");
-    con.setRequestProperty("Content-Type", "application/json");
-    con.setConnectTimeout(5000);
-  
-    Reader streamReader = (con.getResponseCode() > 299)
-        ? new InputStreamReader(con.getErrorStream())
-        : new InputStreamReader(con.getInputStream());
-  
-    StringBuilder content = new StringBuilder();
-    try (BufferedReader in = new BufferedReader(streamReader)) {
-      String line;
-      while ((line = in.readLine()) != null) {
-        content.append(line);
-      }
-    }
-    con.disconnect();
-  
-    @SuppressWarnings("unchecked")
-    Map<String, Object> map = mapper.readValue(content.toString(), Map.class);
-  
-    // The Factory now maps the profileIconId into a profilePicture URL if available.
-    return Factory.mapToUser(map);
-  }
-
-
-  /**
-   * Returns the full profile with profile icon id for displaying summoner icons.
-   * 
-   * @param riotId
-   * @param tagLine
-   * @return
-   * @throws Exception
-   */
-  public Player getCompletePlayer(String riotId, String tagLine, String region) throws Exception {
-    // Get basic player details
-    Player basicPlayer = getUserById(riotId, tagLine, region);
-    if (basicPlayer == null) {
-      throw new Exception("Basic player data not found");
-    }
-    // Get extended details (profile icon) using puuid.
-    Player extendedPlayer = getUserProfileByPuuid(basicPlayer.getPuuid(), region);
-
-    basicPlayer.setProfileIconId(extendedPlayer.getProfileIconId());
-    return basicPlayer;
-  }
-
-
-  /**
-   * Retrieves player rank data using the player's PUUID from Riot's API.
-   *
-   * @param puuid The player's unique identifier (PUUID) as provided by Riot.
-   * @return A {@link Player} object containing the player's rank information.
-   * @throws Exception if the Riot API request fails or if there is an error in parsing the JSON response.
- */ 
-  public List<RankInfo> getRankInfoByPuuid(String puuid, String region) throws Exception{
-    String uriString = "https://" + region + ".api.riotgames.com";
-    URI uri = UriComponentsBuilder
-    .fromUriString(uriString)
-    .path("/lol/league/v4/entries/by-puuid/{puuid}")
-    .queryParam("api_key", apiKey)
-    .buildAndExpand(puuid)
-    .toUri();
-
-    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
-    con.setRequestMethod("GET");
-    con.setRequestProperty("Content-Type", "application/json");
-    con.setConnectTimeout(5000);
-
-
-    Reader streamReader = (con.getResponseCode() > 299)
-        ? new InputStreamReader(con.getErrorStream())
-        : new InputStreamReader(con.getInputStream());
-  
-    StringBuilder content = new StringBuilder();
-    try (BufferedReader in = new BufferedReader(streamReader)) {
-      String line;
-      while ((line = in.readLine()) != null) {
-        content.append(line);
-      }
-    }
-    con.disconnect();
-  
-    List<Map<String, Object>> list = mapper.readValue(
-      content.toString(),
-      new TypeReference<List<Map<String, Object>>>() {}
-    );
-
-    List<RankInfo> rankInfos = new ArrayList<>();
-    for (Map<String, Object> data : list) {
-        rankInfos.add(Factory.mapToRankInfo(data));
-    }
-    return rankInfos;
-  }
-  
-  
-
-  /**
-   * Fetches the most recent match IDs for a given player from Riot.
-   *
-   * @param puuid the player's Riot PUUID
-   * @param type  the match type (e.g., "ranked")
-   * @param count the number of match IDs to retrieve
-   * @return a list of match ID strings
-   * @throws Exception if the Riot API request or parsing fails
-   */
-  public List<String> getRecentMatchIds(String puuid, String type, String region, int count) throws Exception {
-    String uriString = "https://" + region + ".api.riotgames.com";
-    URI uri = UriComponentsBuilder
-      .fromUriString(uriString)
-      .path("/lol/match/v5/matches/by-puuid/{puuid}/ids")
+      .fromUriString("https://" + platformRegion + ".api.riotgames.com")
+      .path("/lol/summoner/v4/summoners/by-puuid/{puuid}")
       .queryParam("api_key", apiKey)
-      .queryParam("type", type)
-      .queryParam("count", count)
       .buildAndExpand(puuid)
       .toUri();
 
-    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
-    con.setRequestMethod("GET");
-    con.setRequestProperty("Content-Type", "application/json");
-    con.setConnectTimeout(5000);
+    Map<String,Object> map = mapper.convertValue(riotGet(uri), new TypeReference<>(){});
+    return Factory.mapToUser(map);
+  }
 
-    Reader streamReader = (con.getResponseCode() > 299)
-      ? new InputStreamReader(con.getErrorStream())
-      : new InputStreamReader(con.getInputStream());
+  public Player getCompletePlayer(String riotId, String tagLine, String platformRegion, String routingRegion) throws Exception {
 
-    StringBuilder content = new StringBuilder();
-    try (BufferedReader in = new BufferedReader(streamReader)) {
-      String line;
-      while ((line = in.readLine()) != null) {
-        content.append(line);
-      }
-    }
-    con.disconnect();
+    Player basic = getUserById(riotId, tagLine, routingRegion);
 
-    return mapper.readValue(content.toString(), new TypeReference<List<String>>() {});
+    Player profile = getUserProfileByPuuid(basic.getPuuid(), platformRegion);
+
+    basic.setProfileIconId(profile.getProfileIconId());
+    return basic;
   }
 
   /**
-   * Retrieves full match data from Riot API using the match ID.
+   * Returns all ranked entries (Solo/Duo, Flex, …) for the given PUUID.
+   */
+  public List<RankInfo> getRankInfoByPuuid(String puuid, String region) throws Exception {
+    URI uri = UriComponentsBuilder
+      .fromUriString("https://" + region + ".api.riotgames.com")
+      .path("/lol/league/v4/entries/by-puuid/{puuid}")
+      .queryParam("api_key", apiKey)
+      .buildAndExpand(puuid)
+      .toUri();
+
+    List<Map<String,Object>> list = mapper.readValue(
+      riotGet(uri).traverse(),
+      new TypeReference<>() {});
+
+    List<RankInfo> out = new ArrayList<>();
+    for (Map<String, Object> m : list) out.add(Factory.mapToRankInfo(m));
+    return out;
+  }
+
+
+  /**
+   * Returns the most‑recent match IDs for a player.
    *
-   * @param matchId the match ID string
-   * @return a {@link JsonNode} representing the entire match payload
-   * @throws Exception if the Riot API request or parsing fails
+   * @param puuid  Riot PUUID
+   * @param type   Match type filter (e.g. "ranked")
+   * @param region Routing region (americas, europe, …)
+   * @param count  Max IDs to return (≤ 100)
+   */
+  public List<String> getRecentMatchIds(String puuid, String type,
+                          String region, int count) throws Exception {
+    URI uri = UriComponentsBuilder
+      .fromUriString("https://" + region + ".api.riotgames.com")
+      .path("/lol/match/v5/matches/by-puuid/{puuid}/ids")
+      .queryParam("type", type)
+      .queryParam("count", count)
+      .queryParam("api_key", apiKey)
+      .buildAndExpand(puuid)
+      .toUri();
+
+      return mapper.readValue(
+        riotGet(uri).traverse(),
+        new TypeReference<>() {});
+  }
+
+  /**
+   * Downloads full match payload for the given ID.
    */
   public JsonNode getMatchById(String matchId, String region) throws Exception {
-    String uriString = "https://" + region + ".api.riotgames.com";
     URI uri = UriComponentsBuilder
-      .fromUriString(uriString)
-      .path("/lol/match/v5/matches/{matchId}")
+      .fromUriString("https://" + region + ".api.riotgames.com")
+      .path("/lol/match/v5/matches/{id}")
       .queryParam("api_key", apiKey)
       .buildAndExpand(matchId)
       .toUri();
 
-    HttpURLConnection con = (HttpURLConnection) uri.toURL().openConnection();
-    con.setRequestMethod("GET");
-    con.setRequestProperty("Content-Type", "application/json");
-    con.setConnectTimeout(5000);
-
-    Reader streamReader = (con.getResponseCode() > 299)
-      ? new InputStreamReader(con.getErrorStream())
-      : new InputStreamReader(con.getInputStream());
-
-    StringBuilder content = new StringBuilder();
-    try (BufferedReader in = new BufferedReader(streamReader)) {
-      String line;
-      while ((line = in.readLine()) != null) {
-        content.append(line);
-      }
-    }
-    con.disconnect();
-
-    return mapper.readTree(content.toString());
+    return riotGet(uri);
   }
 
   /**
@@ -379,13 +306,14 @@ public class RiotService {
    * @throws Exception if any match fails to fetch
    */
   public void cacheMissingMatches(List<String> ids, String puuid, String region) throws Exception {
-    Set<String> existing = matchRepository.findExistingMatchIds(ids);
-
+    Set<String> existing = matchRepository.findExistingMatchIdsForUser(ids, puuid);
+  
     for (String id : ids) {
-      if (!existing.contains(id)) {
-        JsonNode match = getMatchById(id, region);
-        cacheMatch(match, puuid);
+      if (existing.contains(id)) {
+        continue;
       }
+      JsonNode match = getMatchById(id, region);
+      cacheMatch(match, puuid);
     }
   }
 
@@ -417,5 +345,17 @@ public class RiotService {
     return rankRepository.save(info);
   }
 
-  
+
+  /**
+   * Wrapper exception thrown when Riot responds with HTTP 429.  Holds the {@code Retry‑After}
+   * value (seconds) so the caller can back‑off accordingly.
+   */
+  public static class Riot429Exception extends Exception {
+    private final long retryAfterSeconds;
+    public Riot429Exception(long retryAfterSeconds) {
+        super("HTTP 429 from Riot; retry in " + retryAfterSeconds + "s");
+        this.retryAfterSeconds = retryAfterSeconds;
+    }
+    public long retryAfterSeconds() { return retryAfterSeconds; }
+  } 
 }
