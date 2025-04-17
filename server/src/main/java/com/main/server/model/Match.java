@@ -1,5 +1,6 @@
 package com.main.server.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * to store the most relevant attributes.
  */
 public class Match {
+  @JsonAlias({ "match_id", "metadata.matchId" })
   @JsonProperty("metadata.matchId")
   private String matchId;
 

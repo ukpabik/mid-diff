@@ -1,4 +1,4 @@
-import type { Player, Match, RankInfoEntry } from "./types"
+import type { Player, Match, RankInfoEntry, PlayerBuild } from "./types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const FLASK_API_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
@@ -26,6 +26,12 @@ export async function getPlayerFromDb(puuid: string): Promise<Player> {
     tagLine: data.tag_line,
     profilePicture: data.profile_picture,
   };
+}
+
+export async function getBuildFromDb(matchId: string, puuid: string): Promise<PlayerBuild> {
+  const res = await fetch(`${API_BASE_URL}/api/build?matchId=${matchId}&puuid=${puuid}`);
+  if (!res.ok) throw new Error("Failed to fetch build info");
+  return res.json();
 }
 
 export async function getRankInfoFromDb(puuid: string, region: string): Promise<RankInfoEntry[]> {

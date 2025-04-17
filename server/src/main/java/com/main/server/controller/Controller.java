@@ -3,6 +3,7 @@ import java.io.PrintWriter;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -11,8 +12,12 @@ import org.springframework.web.bind.annotation.*;
 
 import com.main.server.model.Match;
 import com.main.server.model.Player;
+import com.main.server.model.PlayerBuild;
 import com.main.server.model.RankInfo;
+import com.main.server.repository.PlayerBuildRepository;
 import com.main.server.service.DatabaseService;
+import com.main.server.service.ItemDto;
+import com.main.server.service.ItemService;
 import com.main.server.service.RiotService;
 
 import io.github.bucket4j.Bandwidth;
@@ -37,15 +42,19 @@ public class Controller {
 
   private final DatabaseService databaseService;
   private final RiotService accountService;
+  private final PlayerBuildRepository buildRepo;
+  private final ItemService itemService;
 
   private final Bucket bucket;
 
   @Value("${spring.api.backend.key}")
   private String backendApiKey;
 
-  public Controller(DatabaseService databaseService, RiotService accountService){
+  public Controller(DatabaseService databaseService, RiotService accountService, PlayerBuildRepository buildRepo, ItemService itemService){
     this.databaseService = databaseService;
     this.accountService = accountService;
+    this.buildRepo = buildRepo;
+    this.itemService = itemService;
     Bandwidth limit = Bandwidth.classic(60, Refill.greedy(60, Duration.ofMinutes(1)));
     this.bucket = Bucket.builder()
     .addLimit(limit)
@@ -314,4 +323,67 @@ public class Controller {
       return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
     }
   }
+
+  /**
+   * Retrieves a user's build info for a specific game.
+   * @param puuid player id of user
+   * @return A player build object.
+   */
+  @GetMapping("/build/{matchId}/{puuid}")
+  public ResponseEntity<?> getBuildForMatch(
+      @PathVariable String matchId,
+      @PathVariable String puuid,
+      HttpServletRequest request
+  ) {
+      // auth
+      if (!isAuthorized(request)) {
+        return ResponseEntity
+          .status(HttpStatus.UNAUTHORIZED)
+          .body(Map.of("error", "Unauthorized"));
+      }
+
+      // rate‑limit
+      if (!bucket.tryConsume(1)) {
+        return ResponseEntity
+          .status(HttpStatus.TOO_MANY_REQUESTS)
+          .build();
+      }
+
+      try {
+          PlayerBuild opt = buildRepo
+              .findByMatchIdAndPuuid(matchId, puuid);
+          if (opt == null) {
+            return ResponseEntity
+              .status(HttpStatus.NOT_FOUND)
+              .body(Map.of("error", "Build not found"));
+          }
+          PlayerBuild pb = opt;
+
+          // turn each item slot into an ItemDto
+          List<ItemDto> items = List.of(
+            pb.getItem0(), pb.getItem1(), pb.getItem2(),
+            pb.getItem3(), pb.getItem4(), pb.getItem5(),
+            pb.getItem6()
+          ).stream()
+          .map(itemService::getItem)
+          .filter(Objects::nonNull)
+          .toList();
+
+          // assemble the response map
+          Map<String,Object> resp = Map.of(
+            "matchId",        matchId,
+            "puuid",          puuid,
+            "items",          items,
+            "ddragonVersion", itemService.getVersion()
+          );
+
+          return ResponseEntity.ok(resp);
+
+      } catch (Exception e) {
+        return ResponseEntity
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(Map.of("error", e.getMessage()));
+      }
+  }
+
 }
