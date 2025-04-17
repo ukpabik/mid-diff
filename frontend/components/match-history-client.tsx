@@ -7,6 +7,11 @@ import { Loader2 } from "lucide-react"
 import { analyzeMatch, getCachedMatches } from "@/lib/api"
 import type { Match } from "@/lib/types"
 
+
+// Polls update until there are 20 matches
+const TARGET_MATCH_COUNT = 20
+const POLL_INTERVAL = 4_000
+
 export default function MatchHistoryClient({ puuid }: { puuid: string }) {
   const [matches, setMatches] = useState<Match[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -32,6 +37,22 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (matches.length >= TARGET_MATCH_COUNT) return 
+    const id = setInterval(async () => {
+      try {
+        const latest = await getCachedMatches(puuid)
+        if (latest.length !== matches.length) {
+          setMatches(latest)
+        }
+      } catch (err) {
+        console.error("poll error", err)
+      }
+    }, POLL_INTERVAL)
+
+    return () => clearInterval(id)
+  }, [matches.length, puuid])
 
   // Manual refresh button – ensure at least 60s between clicks
   async function handleRefresh() {

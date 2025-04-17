@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -20,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -315,6 +317,14 @@ public class RiotService {
       JsonNode match = getMatchById(id, region);
       cacheMatch(match, puuid);
     }
+  }
+
+  @Async("riotTaskExecutor")
+  public CompletableFuture<Void> cacheMissingMatchesAsync(
+          List<String> matchIds, String puuid, String routingRegion) throws Exception {
+            
+    cacheMissingMatches(matchIds, puuid, routingRegion);
+    return CompletableFuture.completedFuture(null);
   }
 
   /**

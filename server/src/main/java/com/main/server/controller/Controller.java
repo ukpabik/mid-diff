@@ -46,7 +46,7 @@ public class Controller {
   public Controller(DatabaseService databaseService, RiotService accountService){
     this.databaseService = databaseService;
     this.accountService = accountService;
-    Bandwidth limit = Bandwidth.classic(50, Refill.greedy(100, Duration.ofMinutes(1)));
+    Bandwidth limit = Bandwidth.classic(60, Refill.greedy(60, Duration.ofMinutes(1)));
     this.bucket = Bucket.builder()
     .addLimit(limit)
     .build();
@@ -186,7 +186,7 @@ public class Controller {
           accountService.saveRankInfo(rankInfo);
         }
         List<String> ids = accountService.getRecentMatchIds(user.getPuuid(), "ranked", routingRegion, 20);
-        accountService.cacheMissingMatches(ids, user.getPuuid(), routingRegion);
+        accountService.cacheMissingMatchesAsync(ids, user.getPuuid(), routingRegion);
         return ResponseEntity.ok(user);
       }
       else{
