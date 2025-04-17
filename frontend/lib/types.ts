@@ -48,3 +48,17 @@ export interface RankInfo {
   solo: RankInfoEntry;
   flex: RankInfoEntry;
 }
+
+export interface ItemDto {
+  id: number;
+  name: string;
+  description: string;
+  totalGold: number;
+}
+
+export interface PlayerBuild {
+  matchId: string;
+  puuid: string;
+  items: ItemDto[];
+  ddragonVersion: string;
+}

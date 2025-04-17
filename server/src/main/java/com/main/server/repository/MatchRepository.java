@@ -105,9 +105,13 @@ public class MatchRepository {
   }
   
 
-
+  /**
+   * Pulls the last 20 matches from database.
+   * @param puuid
+   * @return A list of the most recent {@link Match} objects.
+   */
   public List<Match> findByPuuid(String puuid) {
-    String sql = "SELECT * FROM matches WHERE puuid = ? ORDER BY game_start_timestamp DESC";
+    String sql = "SELECT * FROM matches WHERE puuid = ? ORDER BY game_start_timestamp DESC LIMIT 20";
     return jdbcTemplate.query(sql, new MatchRowMapper(), puuid);
   }
 
