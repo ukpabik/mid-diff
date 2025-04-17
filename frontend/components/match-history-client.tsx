@@ -39,7 +39,9 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
   }
 
   useEffect(() => {
-    if (matches.length >= TARGET_MATCH_COUNT) return 
+    if (matches.length >= TARGET_MATCH_COUNT){
+      return 
+    }
     const id = setInterval(async () => {
       try {
         const latest = await getCachedMatches(puuid)
@@ -91,17 +93,10 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
     )
   }
 
-  if (!matches || matches.length === 0) {
+  if (matches.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No match history available</p>
-        <button
-          className="mt-4 px-4 py-2 bg-secondary text-secondary-foreground rounded disabled:opacity-50"
-          onClick={handleRefresh}
-          disabled={refreshDisabled}
-        >
-          {refreshDisabled ? `Wait ${refreshWait}s` : "Refresh"}
-        </button>
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -121,6 +116,13 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
       {matches.map((match) => (
         <MatchCard key={match.matchId} match={match} />
       ))}
+
+      {matches.length < TARGET_MATCH_COUNT && (
+        <div className="flex justify-center items-center py-4 gap-2">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Loading more matches...</span>
+        </div>
+      )}
     </div>
   )
 }
