@@ -115,7 +115,7 @@ export default function SearchForm() {
           className="border text-gray-200 px-3 py-2 rounded-md focus:border-blue-500 focus:ring focus:ring-blue-200"
         >
           {regions.map((r) => (
-            <option key={r} value={r}>
+            <option key={r} value={r} className="text-black">
               {r.toUpperCase()}
             </option>
           ))}
