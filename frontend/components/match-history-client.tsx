@@ -4,8 +4,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Loader2 } from "lucide-react"
-import { analyzeMatch, getCachedMatches } from "@/lib/api"
-import type { Match } from "@/lib/types"
+import { analyzeMatch, getBuildFromDb, getCachedMatches } from "@/lib/api"
+import type { Match, PlayerBuild } from "@/lib/types"
 
 
 // Polls update until there are 20 matches
@@ -14,6 +14,7 @@ const POLL_INTERVAL = 4_000
 
 export default function MatchHistoryClient({ puuid }: { puuid: string }) {
   const [matches, setMatches] = useState<Match[]>([])
+  const [builds, setBuilds] = useState<Record<string, PlayerBuild>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,7 +29,8 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
     try {
       setIsLoading(true)
       const data = await getCachedMatches(puuid)
-      setMatches(data)
+      
+      setMatches(normalize(data))
       setError(null)
     } catch (err) {
       console.error("Error loading matches:", err)
@@ -36,6 +38,13 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  function normalize(raw: any[]): Match[] {
+    return raw.map((m) => ({
+      ...m,
+      matchId: m["metadata.matchId"]
+    }))
   }
 
   useEffect(() => {
@@ -46,7 +55,7 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
       try {
         const latest = await getCachedMatches(puuid)
         if (latest.length !== matches.length) {
-          setMatches(latest)
+          setMatches(normalize(latest))
         }
       } catch (err) {
         console.error("poll error", err)
@@ -55,6 +64,25 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
 
     return () => clearInterval(id)
   }, [matches.length, puuid])
+
+  useEffect(() => {
+    if (matches.length === 0) return
+
+    Promise.all(
+      matches.map((m) =>
+        getBuildFromDb(m.matchId, puuid)
+          .then((b) => [m.matchId, b] as const)
+          .catch((_) => [m.matchId, null] as const)
+      )
+    ).then((entries) => {
+      // build map: matchId → PlayerBuild | null
+      const map: Record<string, PlayerBuild> = {}
+      entries.forEach(([id, b]) => {
+        if (b) map[id] = b
+      })
+      setBuilds(map)
+    })
+  }, [matches, puuid])
 
   // Manual refresh button – ensure at least 60s between clicks
   async function handleRefresh() {
@@ -114,22 +142,27 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
       </div>
 
       {matches.map((match) => (
-        <MatchCard key={match.matchId} match={match} />
+        <MatchCard
+          key={match.matchId}
+          match={match}
+          build={builds[match.matchId]}
+        />
       ))}
 
       {matches.length < TARGET_MATCH_COUNT && (
         <div className="flex justify-center items-center py-4 gap-2">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">Loading more matches...</span>
+          <span className="text-sm text-muted-foreground">
+            Loading more matches...
+          </span>
         </div>
       )}
     </div>
   )
 }
 
-function MatchCard({ match }: { match: Match }) {
+function MatchCard({ match, build }: { match: Match, build: PlayerBuild }) {
   const isWin = match.win
-
   // Format match date
   const matchDate = new Date(match.gameStartTimestamp)
   const formattedDate = matchDate.toLocaleDateString()
@@ -187,6 +220,7 @@ function MatchCard({ match }: { match: Match }) {
       setIsLoadingAdvice(false)
     }
   }
+
 
   return (
     <Card className={`overflow-hidden border-l-4 ${isWin ? "border-l-green-500" : "border-l-red-500"}`}>
@@ -246,6 +280,33 @@ function MatchCard({ match }: { match: Match }) {
                 <div className="text-xs text-muted-foreground">Gold</div>
                 <div className="text-sm">{(match.goldEarned / 1000).toFixed(1)}k</div>
               </div>
+            </div>
+            <Separator className="my-2" />
+            <div className="flex flex-wrap gap-1 mb-4">
+            {build ? (
+              <div className="flex gap-1">
+              {Array.from({ length: 7 }, (_, idx) => {
+                const item = build.items[idx]
+                return item ? (
+                  <img
+                    key={idx}
+                    src={`https://ddragon.leagueoflegends.com/cdn/${build.ddragonVersion}/img/item/${item.id}.png`}
+                    alt={item.name}
+                    title={item.name}
+                    className="w-6 h-6 rounded"
+                  />
+                ) : (
+                  <div
+                    key={idx}
+                    className="w-6 h-6 rounded bg-white/15"
+                  />
+                )
+              })}
+            </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">No build data</div>
+            )}
+
             </div>
             <div className="mt-4">
               {!advice ? (

@@ -28,8 +28,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.main.server.factory.Factory;
 import com.main.server.model.Match;
 import com.main.server.model.Player;
+import com.main.server.model.PlayerBuild;
 import com.main.server.model.RankInfo;
 import com.main.server.repository.MatchRepository;
+import com.main.server.repository.PlayerBuildRepository;
 import com.main.server.repository.RankRepository;
 
 import io.github.bucket4j.Bandwidth;
@@ -48,12 +50,13 @@ public class RiotService {
 
   @Autowired private MatchRepository matchRepository;
   @Autowired private RankRepository rankRepository;
+  @Autowired private PlayerBuildRepository playerBuildRepository;
 
   private final ObjectMapper mapper = new ObjectMapper();
 
   private static final BlockingBucket RIOT_BUCKET = Bucket.builder()
-    .addLimit(Bandwidth.simple(20,  Duration.ofSeconds(1)))   // dev key
-    .addLimit(Bandwidth.simple(100, Duration.ofMinutes(2)))  // dev key
+    .addLimit(Bandwidth.simple(20,  Duration.ofSeconds(1)))
+    .addLimit(Bandwidth.simple(100, Duration.ofMinutes(2)))
     .build()
     .asBlocking();
 
@@ -296,7 +299,20 @@ public class RiotService {
         double kda = (m.getKills() + m.getAssists()) / Math.max(1.0, m.getDeaths());
         m.setKda(kda);
 
+        PlayerBuild build = new PlayerBuild(
+          m.getMatchId(),
+          puuid,
+          p.path("item0").asInt(),
+          p.path("item1").asInt(),
+          p.path("item2").asInt(),
+          p.path("item3").asInt(),
+          p.path("item4").asInt(),
+          p.path("item5").asInt(),
+          p.path("item6").asInt()
+        );
+
         matchRepository.save(m);
+        playerBuildRepository.save(build);
       }
     }
   }
@@ -308,17 +324,27 @@ public class RiotService {
    * @throws Exception if any match fails to fetch
    */
   public void cacheMissingMatches(List<String> ids, String puuid, String region) throws Exception {
-    Set<String> existing = matchRepository.findExistingMatchIdsForUser(ids, puuid);
-  
-    for (String id : ids) {
-      if (existing.contains(id)) {
-        continue;
-      }
-      JsonNode match = getMatchById(id, region);
-      cacheMatch(match, puuid);
-    }
-  }
+    Set<String> existingMatches = matchRepository.findExistingMatchIdsForUser(ids, puuid);
+    Set<String> existingBuilds  = playerBuildRepository.findMatchIdsByPuuid(puuid);
 
+    for (String id : ids) {
+        if (existingMatches.contains(id) && existingBuilds.contains(id)) {
+          continue;
+        }
+
+        JsonNode matchJson = getMatchById(id, region);
+        cacheMatch(matchJson, puuid);
+    }
+  } 
+
+  /**
+   * Caches matches that aren't saved in Supabase (asynchronously).
+   * @param matchIds ids of matches pulled from request
+   * @param puuid player id of the user
+   * @param routingRegion region to search the matches from.
+   * @return {@link CompletableFuture} if the job is finished.
+   * @throws Exception
+   */
   @Async("riotTaskExecutor")
   public CompletableFuture<Void> cacheMissingMatchesAsync(
           List<String> matchIds, String puuid, String routingRegion) throws Exception {
