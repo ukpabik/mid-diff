@@ -89,6 +89,9 @@ public class Match {
   @JsonProperty("kda")
   private double kda;
 
+  @JsonProperty("role")
+  private String role;
+
   public Match() {}
 
   // Getters and Setters
@@ -106,6 +109,9 @@ public class Match {
 
   public String getTeamPosition() { return teamPosition; }
   public void setTeamPosition(String teamPosition) { this.teamPosition = teamPosition; }
+
+  public String getRole() { return role; }
+  public void setRole(String role) { this.role = role; }
 
   public boolean isWin() { return win; }
   public void setWin(boolean win) { this.win = win; }
