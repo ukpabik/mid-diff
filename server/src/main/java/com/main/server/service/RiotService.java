@@ -51,7 +51,7 @@ public class RiotService {
   @Autowired private MatchRepository matchRepository;
   @Autowired private RankRepository rankRepository;
   @Autowired private PlayerBuildRepository playerBuildRepository;
-
+  @Autowired private final ChampionService championService = new ChampionService();
   private final ObjectMapper mapper = new ObjectMapper();
 
   private static final BlockingBucket RIOT_BUCKET = Bucket.builder()
@@ -299,6 +299,11 @@ public class RiotService {
         double kda = (m.getKills() + m.getAssists()) / Math.max(1.0, m.getDeaths());
         m.setKda(kda);
 
+        int champId = p.path("championId").asInt();
+        String role = championService.getRoleForChampionId(champId);
+        System.out.println(role);
+        m.setRole(role);
+
         PlayerBuild build = new PlayerBuild(
           m.getMatchId(),
           puuid,
@@ -310,6 +315,7 @@ public class RiotService {
           p.path("item5").asInt(),
           p.path("item6").asInt()
         );
+        
 
         matchRepository.save(m);
         playerBuildRepository.save(build);

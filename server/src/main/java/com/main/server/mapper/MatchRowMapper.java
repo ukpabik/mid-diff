@@ -15,6 +15,7 @@ public class MatchRowMapper implements RowMapper<Match> {
     m.setPuuid(rs.getString("puuid"));
     m.setChampionName(rs.getString("champion_name"));
     m.setChampionId(rs.getString("champion_id"));
+    m.setRole(rs.getString("role"));
     m.setTeamPosition(rs.getString("team_position"));
     m.setWin(rs.getBoolean("win"));
     m.setKills(rs.getInt("kills"));

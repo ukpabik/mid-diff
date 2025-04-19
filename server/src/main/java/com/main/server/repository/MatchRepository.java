@@ -28,7 +28,7 @@ public class MatchRepository {
   public int save(Match m) {
     String sql = """
       INSERT INTO matches (
-        match_id, puuid, champion_name, champion_id, team_position, win,
+        match_id, puuid, champion_name, champion_id, role, team_position, win,
         kills, deaths, assists, gold_earned, gold_spent,
         total_minions_killed, neutral_minions_killed,
         damage_dealt_to_champions, total_damage_taken,
@@ -36,7 +36,7 @@ public class MatchRepository {
         turret_takedowns, inhibitor_takedowns,
         game_start_timestamp, game_duration, game_mode, queue_id,
         cs_per_min, kda
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (match_id, puuid) DO NOTHING
       """;
 
@@ -46,6 +46,7 @@ public class MatchRepository {
         m.getPuuid(),
         m.getChampionName(),
         m.getChampionId(),
+        m.getRole(),
         m.getTeamPosition(),
         m.isWin(),
         m.getKills(),

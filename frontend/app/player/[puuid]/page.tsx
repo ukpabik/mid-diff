@@ -66,7 +66,7 @@ export default async function PlayerPage({
             {error ? (
               <div className="text-center text-red-500">Failed to load matches</div>
             ) : (
-              <MatchHistoryClient puuid={puuid} />
+              <MatchHistoryClient puuid={puuid} region={effectiveRegion}/>
             )}
           </Card>
         </div>
