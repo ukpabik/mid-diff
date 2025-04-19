@@ -71,52 +71,60 @@ def enrich_cluster(row):
 
   if cluster == 0:
     return {
-      "label": "Struggling Laner",
-      "archetype_description": "Average farm and kills but poor vision control in lane.",
-      "advice": "Improve ward coverage and focus on objectives to regain lane control."
+      "label": "Visionary Control",
+      "archetype_description": "Low damage output, high assist count, strong map control via vision.",
+      "advice": "Maintain deep vision wards and use them to create opportunities for your team."
     }
+
   elif cluster == 1:
     return {
-      "label": "Overextended Duelist",
-      "archetype_description": "High damage potential but frequently dies due to risky plays.",
-      "advice": "Prioritize safety and only engage when you have vision and support."
+      "label": "Early Struggler",
+      "archetype_description": "Low kill involvement and vision score—struggles to impact early game.",
+      "advice": "Focus on safe farming and incremental vision to regain control in your lane."
     }
+
   elif cluster == 2:
     return {
-      "label": "Visionary Support",
-      "archetype_description": "Exceptional vision control with high assist counts enabling team plays.",
-      "advice": "Maintain deep ward coverage and coordinate engages to maximize impact."
+      "label": "High-Risk DPS",
+      "archetype_description": "High damage outputs but inconsistent positioning leading to extra deaths.",
+      "advice": "Balance aggressive play with better positioning and vision awareness."
     }
+
   elif cluster == 3:
     return {
-      "label": "High‑Impact Carry",
-      "archetype_description": "Massive damage output and kill counts driving team fights.",
-      "advice": "Position carefully to deal damage safely and secure key objectives."
+      "label": "Vision Specialist",
+      "archetype_description": "Exceptional vision metrics and assist counts, enabling coordinated plays.",
+      "advice": "Continue securing key vision points and guide teammates to capitalize on information."
     }
+
   elif cluster == 4:
     return {
-      "label": "Frontline Bruiser",
-      "archetype_description": "Durable initiator who soaks damage and contributes solid kills.",
-      "advice": "Lead engages and build resistances to protect your team."
+      "label": "Engage Initiator",
+      "archetype_description": "High durability and solid damage trade-offs when initiating fights.",
+      "advice": "Lead team engagements and prioritize build paths that enhance survivability."
     }
+
   elif cluster == 5:
     return {
-      "label": "Minimal Impact",
-      "archetype_description": "Low kills, assists, and vision—struggles to influence games early.",
-      "advice": "Work on fundamental farming and warding to scale into mid-game."
+      "label": "Scaling Carry",
+      "archetype_description": "Moderate stats early but explosive late-game performance and damage spikes.",
+      "advice": "Prioritize safe scaling until you hit your power spikes in the late game."
     }
+
   elif cluster == 6:
     return {
-      "label": "Flawless Performer",
-      "archetype_description": "Near-perfect KDA and win rate showcasing exceptional execution.",
-      "advice": "Review your decision-making in these games to replicate success."
+      "label": "Precision Execution",
+      "archetype_description": "Near-zero deaths and consistently high KDA reflecting flawless game execution.",
+      "advice": "Study decision-making in these matches to replicate optimal play patterns."
     }
+
   elif cluster == 7:
     return {
-      "label": "Roaming Support",
-      "archetype_description": "High assist and vision scores emphasizing map presence and rotations.",
-      "advice": "Coordinate roams with laners and secure key objectives with timely wards."
+      "label": "Steady Performer",
+      "archetype_description": "Balanced stats across kills, assists, and vision—consistent impact.",
+      "advice": "Maintain consistency and look for small edges, like lane control and vision timing."
     }
+
   else:
     return {
       "label": "Unknown",
