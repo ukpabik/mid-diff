@@ -7,102 +7,70 @@ import json
 
 load_dotenv()
 
+# role → custom thresholds
+ROLE_THRESHOLDS = {
+    "TOP":     { "high_cs": 6.0,  "low_cs": 3.0,  "high_tank": 800,  "low_tank": 200 },
+    "JUNGLE":  { "high_cs": 3.5,  "low_cs": 1.0,  "high_tank": 600,  "low_tank": 150 },
+    "MID":     { "high_cs": 7.0,  "low_cs": 4.0,  "high_dmg": 2200, "low_dmg": 600 },
+    "ADC":     { "high_cs": 7.5,  "low_cs": 4.5,  "high_dmg": 2400, "low_dmg": 700 },
+    "SUPPORT": { "high_vision": 40, "low_vision": 10, "high_assist": 0.7, "low_assist": 0.2 },
+}
+DEFAULT = { 
+    "high_cs": 6.0, "low_cs": 3.0, 
+    "high_dmg": 2000, "low_dmg": 500,
+    "high_tank": 700, "low_tank": 200,
+    "high_vision": 30, "low_vision": 5,
+    "high_assist": 0.5, "low_assist": 0.1
+}
+
 def interpret_cluster(row):
   desc = []
 
-  duration_mins = row["gameDuration"] / 60.0
-  if duration_mins == 0:
-      return "Invalid game duration"
+  duration_m = row["gameDuration"] / 60.0
+  if duration_m <= 20: desc.append("short stomp")
+  elif duration_m >= 45: desc.append("very long game")
 
-  kills_per_min = row["kills"] / duration_mins
-  deaths_per_min = row["deaths"] / duration_mins
-  assists_per_min = row["assists"] / duration_mins
-  gold_per_min = row["goldEarned"] / duration_mins
+  kpm = row["kills"] / max(1, duration_m)
+  if kpm >= 0.3: desc.append("carry performance")
+  elif kpm <= 0.1: desc.append("low kill participation")
 
-  if row["gameDuration"] <= 1200:
-      desc.append("short stomp")
-  elif row["gameDuration"] >= 2700:
-      desc.append("very long game") 
+  dpm = row["deaths"] / max(1, duration_m)
+  if dpm >= 0.3: desc.append("frequent deaths")
+  elif dpm <= 0.07: desc.append("very low deaths")
 
-  if kills_per_min >= 0.3:
-      desc.append("carry performance")
-  elif kills_per_min <= 0.1:
-      desc.append("low kill participation")
+  apm = row["assists"] / max(1, duration_m)
+  if apm >= 0.5: desc.append("heavy team support")
+  elif apm <= 0.1: desc.append("low team involvement")
 
-  if deaths_per_min >= 0.3:
-      desc.append("frequent deaths")
-  elif deaths_per_min <= 0.07:
-      desc.append("very low deaths")
+  if row["kda"] >= 5: desc.append("high KDA (clean execution)")
+  elif row["kda"] <= 1.5: desc.append("low KDA (feeding)")
 
-  if assists_per_min >= 0.5:
-      desc.append("heavy team support")
-  elif assists_per_min <= 0.1:
-      desc.append("low team involvement")
+  gpm = row["goldEarned"] / max(1, duration_m)
+  if gpm >= 500: desc.append("gold‑rich economy")
+  elif gpm <= 233: desc.append("gold‑starved")
 
-  if row["kda"] >= 5:
-      desc.append("high KDA (clean execution)")
-  elif row["kda"] <= 1.5:
-      desc.append("low KDA (high risk or feeding)")
+  if row["csPerMin"] >= 8.5: desc.append("elite farming")
+  elif row["csPerMin"] <= 4.5: desc.append("low CS rate")
 
-  if gold_per_min >= 500:
-      desc.append("gold fed")
-  elif gold_per_min <= 233:
-      desc.append("gold-starved")
+  dmgpm = row["damageDealtToChampions"] / max(1, duration_m)
+  if dmgpm >= 2000: desc.append("very high damage")
+  elif dmgpm <= 500: desc.append("low damage output")
 
-  if row["goldSpent"] < row["goldEarned"] * 0.8:
-      desc.append("inefficient spending")
+  dtpm = row["totalDamageTaken"] / max(1, duration_m)
+  if dtpm >= 1333: desc.append("frontline tanking")
+  elif dtpm <= 333: desc.append("avoids frontline")
 
-  if row["csPerMin"] >= 8.5:
-      desc.append("elite farming")
-  elif row["csPerMin"] <= 4.5:
-      desc.append("low CS rate")
+  if row["visionScore"] >= 50: desc.append("excellent vision")
+  elif row["visionScore"] <= 15: desc.append("poor vision control")
 
-  total_cs = row["totalMinionsKilled"] + row["neutralMinionsKilled"]
-  if total_cs >= 300:
-      desc.append("farm-heavy role (mid/ADC)")
-  elif total_cs <= 80:
-      desc.append("low minion control")
+  if row["wardsPlaced"] >= 30: desc.append("vision‑focused role")
+  elif row["wardsPlaced"] <= 5: desc.append("no warding")
 
-  dmg_per_min = row["damageDealtToChampions"] / duration_mins
-  if dmg_per_min >= 2000:
-      desc.append("very high damage")
-  elif dmg_per_min <= 500:
-      desc.append("low damage output")
-
-  dmg_taken_per_min = row["totalDamageTaken"] / duration_mins
-  if dmg_taken_per_min >= 1333: 
-      desc.append("frontline tanking")
-  elif dmg_taken_per_min <= 333:
-      desc.append("avoids frontline or squishy")
-
-  if row["visionScore"] >= 50:
-      desc.append("excellent map awareness")
-  elif row["visionScore"] <= 15:
-      desc.append("poor vision control")
-
-  if row["wardsPlaced"] >= 30:
-      desc.append("vision-focused role (support)")
-  elif row["wardsPlaced"] <= 5:
-      desc.append("no warding")
-
-  if row["wardsKilled"] >= 7:
-      desc.append("vision denial expert")
-  elif row["wardsKilled"] <= 1:
-      desc.append("poor enemy vision control")
-
-  if row["turretTakedowns"] >= 5:
-      desc.append("strong objective pressure")
-  elif row["turretTakedowns"] == 0:
-      desc.append("no turret participation")
-
-  if row["inhibitorTakedowns"] >= 2:
-      desc.append("closes games")
-  elif row["inhibitorTakedowns"] == 0:
-      desc.append("never reached inhib")
+  if row["turretTakedowns"] >= 5: desc.append("strong objective pressure")
+  if row["inhibitorTakedowns"] >= 2: desc.append("game‑closing pushes")
 
   return ", ".join(desc)
-
-
+  
 def enrich_cluster(row):
   cluster = row['cluster']
   
@@ -161,6 +129,8 @@ def enrich_cluster(row):
       "advice": ""
     }
 
+
+
 def analyze_match(new_match_row: dict):
 
   # List of features used during training
@@ -200,30 +170,44 @@ def parse_gemini(response):
   
   return data
 
-def generate_advice(cluster_json):
+def generate_advice(cluster_json, build_item_names, position, player_rank, role, championName):
   client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
   prompt = f"""
-    You are an expert League of Legends coach and analyst. Given the following player cluster profile, generate a personalized and in-depth gameplay improvement tip tailored to their performance style. Be specific and tactical — don't just state problems, give actual suggestions on what to practice or change.
+  You are an expert League of Legends coach. A player just finished a game in the {position} lane as a {role}, currently ranked {player_rank}. They built these items:
 
-    Respond ONLY with the following format:
+  {build_item_names}
 
-    {{
-      "cluster": int,
-      "label": "",
-      "archetype_description": "",
-      "description": "",
-      "advice": ""
-    }}
+  Their play style cluster is:
 
-    Here is the input:
+  {json.dumps(cluster_json, indent=2)}
 
-    {cluster_json}.
-    
-    Also, make sure the advice is concise and it should be limited to two to three sentences.
-  """
-  response = client.models.generate_content(
-    model="gemini-2.0-flash",
-    contents=[prompt]
-  )
+  Using all of that information, produce a concise, tactical improvement tip tailored to:
+    1. Their cluster profile.
+    2. Their current rank.
+    3. The specific build they ran.
+    4. The {role} role in {position}.
+    5. The champion {championName}. 
+
+  Respond ONLY in JSON, following this schema exactly:
+
+  {{
+    "cluster": int,
+    "label": string,
+    "archetype_description": string,
+    "description": string,
+    "advice": string
+  }}
+
+  Keep the “advice” field to 2–3 sentences, focused on what to practice or adjust next game.
   
+  Make sure to talk like how a human would.
+  """
+
+  response = client.models.generate_content(
+      model="gemini-2.0-flash",
+      contents=[prompt]
+  )
+
   return parse_gemini(response.text)

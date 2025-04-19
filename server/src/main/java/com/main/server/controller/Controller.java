@@ -55,9 +55,11 @@ public class Controller {
     this.accountService = accountService;
     this.buildRepo = buildRepo;
     this.itemService = itemService;
-    Bandwidth limit = Bandwidth.classic(60, Refill.greedy(60, Duration.ofMinutes(1)));
+    Bandwidth limit = Bandwidth.classic(3600, Refill.greedy(3600, Duration.ofMinutes(1)));
+    Bandwidth perSecond = Bandwidth.classic(60, Refill.greedy(60, Duration.ofSeconds(1)));
     this.bucket = Bucket.builder()
     .addLimit(limit)
+    .addLimit(perSecond)
     .build();
   }
 

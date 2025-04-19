@@ -4,15 +4,15 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Loader2 } from "lucide-react"
-import { analyzeMatch, getBuildFromDb, getCachedMatches } from "@/lib/api"
-import type { Match, PlayerBuild } from "@/lib/types"
+import { analyzeMatch, getBuildFromDb, getCachedMatches, getRankInfoFromDb } from "@/lib/api"
+import type { Match, PlayerBuild, RankInfoEntry } from "@/lib/types"
 
 
 // Polls update until there are 20 matches
 const TARGET_MATCH_COUNT = 20
 const POLL_INTERVAL = 4_000
 
-export default function MatchHistoryClient({ puuid }: { puuid: string }) {
+export default function MatchHistoryClient({ puuid, region }: { puuid: string, region: string }) {
   const [matches, setMatches] = useState<Match[]>([])
   const [builds, setBuilds] = useState<Record<string, PlayerBuild>>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -146,6 +146,8 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
           key={match.matchId}
           match={match}
           build={builds[match.matchId]}
+          region={region}
+          puuid={puuid}
         />
       ))}
 
@@ -161,7 +163,7 @@ export default function MatchHistoryClient({ puuid }: { puuid: string }) {
   )
 }
 
-function MatchCard({ match, build }: { match: Match, build: PlayerBuild }) {
+function MatchCard({ match, build, region, puuid }: { match: Match, build: PlayerBuild, region: string, puuid: string }) {
   const isWin = match.win
   // Format match date
   const matchDate = new Date(match.gameStartTimestamp)
@@ -210,7 +212,22 @@ function MatchCard({ match, build }: { match: Match, build: PlayerBuild }) {
   const fetchAdvice = async () => {
     try {
       setIsLoadingAdvice(true);
-      const response = await analyzeMatch(match);
+
+      const ranks: RankInfoEntry[] = await getRankInfoFromDb(puuid, region)
+
+      // Pull rank information
+      const solo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5")
+      const playerRank = solo
+        ? `${solo.tier} ${solo.player_rank}`
+        : "Unranked"
+
+      // Call analyze match with all info (rank, build, match info)
+      const response = await analyzeMatch({
+        match,
+        build,
+        playerRank,
+      })
+
       if (!response.ok) throw new Error("Failed to fetch advice")
       const data = await response.json()
       setAdvice(data)
@@ -242,7 +259,12 @@ function MatchCard({ match, build }: { match: Match, build: PlayerBuild }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <div className="font-semibold">{match.championName}</div>
+              <div className="flex items-baseline">
+                <span className="font-semibold">{match.championName}</span>
+                <span className="text-xs text-muted-foreground ml-2">
+                  {match.role}
+                </span>
+              </div>
               {match.teamPosition && (
                 <>
                   <span className="text-muted-foreground">•</span>

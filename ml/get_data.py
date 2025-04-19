@@ -1,13 +1,15 @@
 import requests
-import json
 from dotenv import load_dotenv
 import os
 import time
 import pandas as pd
+from io import StringIO
 
 load_dotenv()
 
 API_KEY = os.getenv("RIOT_API_KEY")
+BACKEND_API_KEY  = os.getenv("BACKEND_API_KEY")
+BACKEND_HEADERS = {"X-API-KEY": BACKEND_API_KEY}
 
 regions = [
   'br1', 'eun1', 'euw1', 'jp1', 'kr',
@@ -30,7 +32,7 @@ TIERS = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'MASTER', 'GRANDMAST
 def is_user_in_db(puuid):
   url = f"{API_BASE}/db/{puuid}"
   try:
-    res = requests.get(url)
+    res = requests.get(url, headers=BACKEND_HEADERS)
     return res.status_code == 200
   except Exception as e:
     print(f"❗ DB check failed: {e}")
@@ -45,7 +47,7 @@ def get_summoners_by_tier(tier):
     else:
       endpoint = f"https://{region}.api.riotgames.com/lol/league/v4/entries/RANKED_SOLO_5x5/{tier}/I?page=1&api_key={API_KEY}"
     try:
-      response = requests.get(endpoint)
+      response = requests.get(endpoint, headers=BACKEND_HEADERS)
       if response.status_code == 200:
         data = response.json()
         if isinstance(data, list):
@@ -79,7 +81,7 @@ def get_riot_id_from_puuid(puuid, platform_region):
   url = f"https://{routing_region}.api.riotgames.com/riot/account/v1/accounts/by-puuid/{puuid}?api_key={API_KEY}"
   backoff = 1
   while True:
-    res = requests.get(url)
+    res = requests.get(url, headers=BACKEND_HEADERS)
     if res.status_code == 429:
       print(f"⏳ Riot API 429 — backing off {backoff}s...")
       time.sleep(backoff)
@@ -94,11 +96,10 @@ def get_riot_id_from_puuid(puuid, platform_region):
 # Triggers /search on backend to upsert user and cache match history
 def call_search(riot_id, tag_line, idx, platform_region):
   routing_region = platform_to_routing.get(platform_region)
-  url = f"https://{API_BASE}/{riot_id}/{tag_line}/{platform_region}/{routing_region}"
-
+  url = f"{API_BASE}/search/{riot_id}/{tag_line}/{platform_region}/{routing_region}"
   backoff = 1
   while True:
-    res = requests.get(url)
+    res = requests.get(url, headers=BACKEND_HEADERS)
     if res.status_code == 429:
       print(f"⏳ API 429 — backing off {backoff}s...")
       time.sleep(backoff)
@@ -134,14 +135,14 @@ def add_match_data_to_db():
     time.sleep(0.5)
 
 def get_training_data():
-  dfs = []
-  # read all matches and load into one csv for ML model training
-  url = f"http://localhost:8080/user/matches/csv/all"
-  df = pd.read_csv(url)
-  df.drop(df.columns[[0, 1, 3]], axis=1, inplace=True)
-  dfs.append(df)
-    
-  full_df = pd.concat(dfs)
-  full_df.to_csv("training_dataset.csv", index=False)
+  # fetch via requests so we can send our header
+  url = f"{API_BASE}/matches/csv/all"
+  res = requests.get(url, headers=BACKEND_HEADERS)
+  res.raise_for_status()
+
+  df = pd.read_csv(StringIO(res.text))
+  df.drop(df.columns[[0,1,3]], axis=1, inplace=True)
+  df.to_csv("training_dataset.csv", index=False)
   
-add_match_data_to_db()
+# add_match_data_to_db()
+get_training_data()

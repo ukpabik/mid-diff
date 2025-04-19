@@ -10,6 +10,7 @@ export interface Match {
   puuid: string
   championName: string
   championId: string
+  role: string
   teamPosition: string
   win: boolean
   kills: number
@@ -61,4 +62,17 @@ export interface PlayerBuild {
   puuid: string;
   items: ItemDto[];
   ddragonVersion: string;
+}
+
+export interface AnalyzeMatchRequest {
+  match: Match;
+  build?: PlayerBuild;
+  playerRank: string;
+}
+
+export interface AdviceResponse {
+  label: string;
+  description: string;
+  archetype_description: string;
+  advice: string;
 }
