@@ -133,7 +133,7 @@ export default function MatchHistoryClient({ puuid, region }: { puuid: string, r
     <div className="space-y-4">
       <div className="text-right">
         <button
-          className="mb-2 px-4 py-2 bg-secondary text-secondary-foreground rounded disabled:opacity-50"
+          className="hover:bg-black/60 cursor-pointer mb-2 px-4 py-2 bg-black/80 text-secondary-foreground rounded disabled:opacity-50"
           onClick={handleRefresh}
           disabled={refreshDisabled}
         >
@@ -199,7 +199,7 @@ function MatchCard({ match, build, region, puuid }: { match: Match, build: Playe
     }
   }
   const championIconUrl = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${match.championId}.png`;
-
+  const teamPositionUrl = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-${match.teamPosition.toLowerCase()}.png`
   const [advice, setAdvice] = useState<{
     advice: string
     archetype_description: string
@@ -240,15 +240,25 @@ function MatchCard({ match, build, region, puuid }: { match: Match, build: Playe
 
 
   return (
-    <Card className={`overflow-hidden border-l-4 ${isWin ? "border-l-green-500" : "border-l-red-500"}`}>
+    <Card className={`bg-black/80 overflow-hidden border-l-4 ${isWin ? "border-l-green-500" : "border-l-red-500"}`}>
       <CardContent className="p-4">
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
           <div>
+            <div className="flex gap-2 items-center">
+
             <img
               src={championIconUrl}
               alt={`Champion ${match.championName}`}
               className="w-12 h-12 rounded mb-2"
             />
+            <img
+              src={teamPositionUrl}
+              alt={`Role: ${match.teamPosition.toLowerCase()}`}
+              title={match.teamPosition}
+              className="w-12 h-12 rounded mb-2"
+            />
+            </div>
+            
             <div className="flex items-center gap-2 mb-2">
               <Badge variant={isWin ? "default" : "destructive"}>{isWin ? "Victory" : "Defeat"}</Badge>
               <span className="text-sm text-muted-foreground">
@@ -335,7 +345,7 @@ function MatchCard({ match, build, region, puuid }: { match: Match, build: Playe
                 <button
                   onClick={fetchAdvice}
                   disabled={isLoadingAdvice}
-                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+                  className="cursor-pointer px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/70 disabled:opacity-50 flex items-center gap-2"
                 >
                   {isLoadingAdvice ? (
                     <>

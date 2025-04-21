@@ -33,8 +33,8 @@ function RankCard({ entry }: { entry: RankInfoEntry }) {
   const winRate = totalGames > 0 ? Math.round((entry.wins / totalGames) * 100) : 0;
 
   return (
-    <div className="border rounded-lg p-4 bg-card flex flex-col gap-3">
-      <div className="text-sm font-medium text-muted-foreground">{queueName}</div>
+    <div className="border rounded-lg p-4 bg-black/80  flex flex-col gap-3">
+      <div className="text-sm font-medium text-white/70 italic">{queueName}</div>
       <div className="flex items-center gap-4">
         <img src={tierIcon} alt={entry.tier} className="w-14 h-14" />
         <div>
@@ -84,7 +84,7 @@ export default function PlayerCard({ player, region }: PlayerCardProps) {
   }, [player]);
 
   return (
-    <Card>
+    <Card className="bg-blue-300/70">
       <CardHeader className="flex flex-col items-center pb-2">
         <Avatar className="h-24 w-24 mb-2">
           {player?.profilePicture && player.profilePicture.trim().length > 0 ? (
@@ -100,7 +100,7 @@ export default function PlayerCard({ player, region }: PlayerCardProps) {
         </Avatar>
         <h2 className="text-2xl font-bold">{player?.gameName}</h2>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">#{player?.tagLine}</Badge>
+          <Badge className="bg-black/70" variant="outline">#{player?.tagLine}</Badge>
         </div>
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
       </CardHeader>

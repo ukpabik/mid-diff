@@ -122,7 +122,7 @@ export default function SearchForm() {
         </select>
       </div>
 
-      <Button type="submit" className="w-full bg-blue-600/70 hover:bg-blue-700 text-white" disabled={isLoading}>
+      <Button type="submit" className="cursor-pointer w-full bg-blue-600/70 hover:bg-blue-700 text-white" disabled={isLoading}>
         {isLoading ? (
           <div className="flex items-center justify-center">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

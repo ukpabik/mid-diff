@@ -7,6 +7,7 @@ import PlayerCard from "@/components/player-card"
 import MatchHistoryClient from "@/components/match-history-client"
 import { getPlayerFromDb } from "@/lib/api"
 import { notFound } from "next/navigation"
+import BackgroundToggle from "@/components/background"
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +38,12 @@ export default async function PlayerPage({
 
 
     return (
+      
     <main className="container mx-auto px-4 py-8">
+      <BackgroundToggle opacity={70} />
       <div className="mb-6">
         <Link href="/">
-          <Button variant="outline" size="sm">
+          <Button className="cursor-pointer" variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Search
           </Button>
@@ -61,7 +64,7 @@ export default async function PlayerPage({
         </div>
 
         <div>
-          <Card className="p-6">
+          <Card className="bg-blue-300/70 p-6">
             <h2 className="text-2xl font-bold mb-4 text-center">Match History</h2>
             {error ? (
               <div className="text-center text-red-500">Failed to load matches</div>
