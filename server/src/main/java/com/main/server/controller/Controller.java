@@ -18,6 +18,7 @@ import com.main.server.repository.PlayerBuildRepository;
 import com.main.server.service.DatabaseService;
 import com.main.server.service.ItemDto;
 import com.main.server.service.ItemService;
+import com.main.server.service.OptimalBuildService;
 import com.main.server.service.RiotService;
 
 import io.github.bucket4j.Bandwidth;
@@ -44,17 +45,19 @@ public class Controller {
   private final RiotService accountService;
   private final PlayerBuildRepository buildRepo;
   private final ItemService itemService;
+  private final OptimalBuildService optimalBuildService;
 
   private final Bucket bucket;
 
   @Value("${spring.api.backend.key}")
   private String backendApiKey;
 
-  public Controller(DatabaseService databaseService, RiotService accountService, PlayerBuildRepository buildRepo, ItemService itemService){
+  public Controller(DatabaseService databaseService, RiotService accountService, PlayerBuildRepository buildRepo, ItemService itemService, OptimalBuildService optimalBuildService){
     this.databaseService = databaseService;
     this.accountService = accountService;
     this.buildRepo = buildRepo;
     this.itemService = itemService;
+    this.optimalBuildService = optimalBuildService;
     Bandwidth limit = Bandwidth.classic(3600, Refill.greedy(3600, Duration.ofMinutes(1)));
     Bandwidth perSecond = Bandwidth.classic(60, Refill.greedy(60, Duration.ofSeconds(1)));
     this.bucket = Bucket.builder()
@@ -79,7 +82,7 @@ public class Controller {
    * @param tagLine the tagline associated with the Riot ID (e.g., "NA1")
    * @return {@link Player} object containing user info or error message on failure
    */
-   @GetMapping("/{riotId}/{tagLine}/{region}")
+  @GetMapping("/{riotId}/{tagLine}/{region}")
   public ResponseEntity<?> getUser(@PathVariable String riotId, @PathVariable String tagLine, @PathVariable String region, HttpServletRequest request) {
     if (!isAuthorized(request)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
     try {
@@ -387,5 +390,35 @@ public class Controller {
           .body(Map.of("error", e.getMessage()));
       }
   }
+  
 
-}
+  /**
+   * Retrieves the top items built on a specific champion.
+   * @param champion the name of the champion
+   * @param req the http request
+   * @return a list of the top items build on a specific champion
+   */
+  @GetMapping("/optimal-build/{champion}")
+  public ResponseEntity<?> optimalBuild(@PathVariable String champion, HttpServletRequest req
+  ) {
+
+    if (!isAuthorized(req)) {
+      return ResponseEntity
+        .status(HttpStatus.UNAUTHORIZED)
+        .body(Map.of("error", "Unauthorized"));
+    }
+
+    // rate‑limit
+    if (!bucket.tryConsume(1)) {
+      return ResponseEntity
+        .status(HttpStatus.TOO_MANY_REQUESTS)
+        .build();
+    }
+    
+    List<ItemDto> items = optimalBuildService.getOptimalBuild(champion);
+    return ResponseEntity.ok(Map.of(
+      "items",          items,
+      "ddragonVersion", itemService.getVersion()
+    ));
+  }
+} 
