@@ -56,7 +56,7 @@ public class WinrateCron {
           FROM all_picks
          WHERE item_id <> 0
          GROUP BY champion_name, item_id
-         HAVING COUNT(*) >= 20
+         HAVING COUNT(*) >= 5
       )
       INSERT INTO champion_item_winrate
         (champion_name, item_id, win_rate, sample_size)
