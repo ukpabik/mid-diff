@@ -24,7 +24,6 @@ public class WinrateCron {
   @Scheduled(cron = "0 0 2 * * *")
   public void rebuildWinrateTable() {
     jdbc.execute("TRUNCATE TABLE champion_item_winrate");
-    System.out.println("Rebuilding winrates");
     String cteInsert = """
       WITH all_picks AS (
         SELECT m.champion_name,

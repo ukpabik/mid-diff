@@ -301,7 +301,6 @@ public class RiotService {
 
         int champId = p.path("championId").asInt();
         String role = championService.getRoleForChampionId(champId);
-        System.out.println(role);
         m.setRole(role);
 
         PlayerBuild build = new PlayerBuild(
