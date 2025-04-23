@@ -7,11 +7,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.main.server.stats.ChampionItemWinrate;
+import com.main.server.stats.ChampionItemWinrateId;
 
 /**
  * Repository for querying per-champion item winrate records.
  */
-public interface ChampionItemWinrateRepo extends JpaRepository<ChampionItemWinrate, Long> {
+public interface ChampionItemWinrateRepo extends JpaRepository<ChampionItemWinrate, ChampionItemWinrateId> {
   
   /**
    * Finds all winrate entries for a given champion name, ignoring case.

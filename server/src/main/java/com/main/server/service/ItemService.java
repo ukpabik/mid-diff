@@ -54,7 +54,7 @@ public class ItemService {
         })
         .build();
 
-      // 1) fetch DDragon versions
+      // fetch DDragon versions
       List<String> versions = rest.getForObject(
         "https://ddragon.leagueoflegends.com/api/versions.json",
         List.class
@@ -64,7 +64,7 @@ public class ItemService {
       }
       version = versions.get(0);
 
-      // 2) fetch all items
+      // fetch all items
       String url = String.format(
         "https://ddragon.leagueoflegends.com/cdn/%s/data/en_US/item.json",
         version
@@ -72,7 +72,7 @@ public class ItemService {
       JsonNode root = rest.getForObject(url, JsonNode.class);
       JsonNode data = root.path("data");
 
-      // 3) map each item into our DTO
+      // map each item into our DTO
       data.fields().forEachRemaining(entry -> {
         int id = Integer.parseInt(entry.getKey());
         JsonNode node = entry.getValue();
@@ -106,7 +106,6 @@ public class ItemService {
       System.out.println("✅ DataDragon metadata loaded: " + items.size() + " items.");
 
     } catch (Exception e) {
-      // Log and continue—app stays up, just no item data until it eventually loads
       System.err.println("⚠️ Failed to load DataDragon metadata: " + e.getMessage());
     }
   }
