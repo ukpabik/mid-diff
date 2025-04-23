@@ -4,6 +4,11 @@ A full-stack League of Legends analytics tool that uses machine learning to anal
 
 ---
 
+![image](https://github.com/user-attachments/assets/e6254f29-c2e4-44ac-a311-367d3bb57a09)
+
+
+---
+
 ## 🔍 Features
 
 - 🎮 **Match Analysis Dashboard**
