@@ -48,13 +48,20 @@ public class ItemService {
           tags.add(t.asText());
         }
       }
+      List<Integer> into = new ArrayList<>();
+      if (node.has("into")) {
+        for (JsonNode intoId : node.get("into")) {
+          into.add(intoId.asInt());
+        }
+      }
       items.put(id, new ItemDto(
         id,
         node.get("name").asText(),
         node.get("description").asText(),
         node.get("gold").get("total").asInt(),
         node.get("image").get("full").asText(),
-        tags
+        tags,
+        into
       ));
     });
   }

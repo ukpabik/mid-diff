@@ -1,8 +1,10 @@
 package com.main.server.service;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -18,7 +20,7 @@ import com.main.server.stats.ChampionItemWinrate;
 public class OptimalBuildService {
 
   private final ChampionItemWinrateRepo winRepo;
-  private final ItemService             itemService;
+  private final ItemService itemService;
 
   public OptimalBuildService(
       ChampionItemWinrateRepo winRepo,
@@ -37,59 +39,79 @@ public class OptimalBuildService {
    * @return List of ItemDto objects (up to 7) representing the recommended build
    */
   public List<ItemDto> getOptimalBuild(String champion) {
-    List<ChampionItemWinrate> rows = 
+    List<ChampionItemWinrate> rows =
       winRepo.findByChampionNameIgnoreCase(champion);
 
-    List<ChampionItemWinrate> filtered = rows.stream()
+    Integer bestBoot = rows.stream()
       .filter(r -> {
-          int id = r.getItemId();
-          ItemDto dto = itemService.getItem(id);
-          if (dto == null) {
-            return false;
-          }
-          var tags = dto.getTags();
-          if (tags.contains("Consumable") || tags.contains("Trinket")) {
-              return false;
-          }
-          String name = dto.getName().toLowerCase();
-          return !name.startsWith("doran");
+        ItemDto d = itemService.getItem(r.getItemId());
+        return d != null && d.getTags().contains("Boots");
       })
+      .max(Comparator.comparingDouble(ChampionItemWinrate::getWinRate))
+      .map(ChampionItemWinrate::getItemId)
+      .orElse(null);
+
+    //  filter to only:
+    //    - items with no children (final-tier) AND matching ALLOWED_TAGS
+    //    - OR the chosen boots
+    //    - OR valid jungle items
+    List<ChampionItemWinrate> eligible = rows.stream()
+      .filter(r -> {
+        ItemDto d = itemService.getItem(r.getItemId());
+        if (d == null) return false;
+        // drop wards, consumables, trinkets
+        if (d.getTags().contains("Consumable") || d.getTags().contains("Trinket")) {
+          return false;
+        }
+        // always allow boots
+        if (bestBoot != null && r.getItemId().equals(bestBoot)) {
+          return true;
+        }
+        // allow jungle item
+        if (d.getTags().contains("Jungle")) {
+          return true;
+        }
+        if (d.getName().startsWith("Doran")){
+          return false;
+        }
+        // allow final-tier items with allowed tier tag
+        boolean isFinalTier = d.getInto().isEmpty();
+        return isFinalTier;
+      })
+      .sorted(Comparator.comparingDouble(ChampionItemWinrate::getWinRate).reversed())
       .collect(Collectors.toList());
 
+    if (bestBoot != null) {
+      eligible.removeIf(r -> r.getItemId().equals(bestBoot));
+    }
 
-    // Gets the ids of the top 7 used items on the champ
-    List<Integer> top7Ids = filtered.stream()
-      .sorted(Comparator.comparingDouble(ChampionItemWinrate::getWinRate)
-                        .reversed())
-      .limit(7)
+    List<Integer> topOthers = eligible.stream()
       .map(ChampionItemWinrate::getItemId)
-      .toList();
-    
-    // If there aren't enough items, fetch more
-    if (top7Ids.size() < 7) {
-      List<ChampionItemWinrate> fallbackAll = 
-        winRepo.findByChampionNameIgnoreCase(champion).stream()
-          .filter(r -> {
-            ItemDto dto = itemService.getItem(r.getItemId());
-            return dto != null
-                && !dto.getTags().contains("Consumable")
-                && !dto.getTags().contains("Trinket")
-                && !dto.getName().toLowerCase().startsWith("doran");
-          })
-          .toList();
-    
-      // Add as many as you need to reach 7, skipping duplicates
-      for (ChampionItemWinrate r : fallbackAll) {
-        if (top7Ids.size() >= 7) break;
-        if (!top7Ids.contains(r.getItemId())) {
-          top7Ids.add(r.getItemId());
-        }
-      }
-      }
+      .limit(6)
+      .collect(Collectors.toList());
 
-    return top7Ids.stream()
+    List<Integer> finalIds = new ArrayList<>(7);
+    for (int i = 0; i < topOthers.size(); i++) {
+      if (i == 1 && bestBoot != null) {
+        finalIds.add(bestBoot);
+      }
+      finalIds.add(topOthers.get(i));
+    }
+    if (bestBoot != null && !finalIds.contains(bestBoot)) {
+      finalIds.add(1, bestBoot);
+    }
+
+    // pad to 7 with any leftover eligible items
+    for (ChampionItemWinrate r : eligible) {
+      if (finalIds.size() >= 7) break;
+      if (!finalIds.contains(r.getItemId())) {
+        finalIds.add(r.getItemId());
+      }
+    }
+
+    return finalIds.stream()
       .map(itemService::getItem)
       .filter(Objects::nonNull)
-      .toList();
+      .collect(Collectors.toList());
   }
 }

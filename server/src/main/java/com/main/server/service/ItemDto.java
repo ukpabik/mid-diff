@@ -9,14 +9,16 @@ public class ItemDto {
   private final int totalGold;
   private final String imageFilename;
   private final List<String> tags;
+  private final List<Integer> into;
 
-  public ItemDto(int id, String name, String description, int totalGold, String imageFilename, List<String> tags) {
+  public ItemDto(int id, String name, String description, int totalGold, String imageFilename, List<String> tags, List<Integer> into) {
     this.id = id;
     this.name = name;
     this.description = description;
     this.totalGold = totalGold;
     this.imageFilename = imageFilename;
     this.tags = List.copyOf(tags);
+    this.into = into;
   }
   
 
@@ -42,5 +44,8 @@ public class ItemDto {
 
   public List<String> getTags(){
     return this.tags;
+  }
+  public List<Integer> getInto() {
+    return into;
   }
 }
