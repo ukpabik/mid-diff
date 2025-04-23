@@ -76,6 +76,7 @@ export default function OptimalBuildPage() {
 
   const [coreItems, setCoreItems] = useState<OptimalItemDto[]>([]);
   const [itemVersion, setItemVersion] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // track active dragging id
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -117,6 +118,7 @@ export default function OptimalBuildPage() {
 
   async function handleGenerate() {
     if (!yourChampion) return;
+    setIsLoading(true);
     try{
       const { items, ddragonVersion } = await getOptimalBuild(yourChampion);
       setCoreItems(items);
@@ -124,6 +126,9 @@ export default function OptimalBuildPage() {
     }
     catch (e) {
       console.error("Could not load optimal build", e)
+    }
+    finally {
+      setIsLoading(false);
     }
   }
 
@@ -148,7 +153,18 @@ export default function OptimalBuildPage() {
             ))}
           </div>
           <div className="flex justify-center">
-            <Button className="cursor-pointer" onClick={handleGenerate}>Generate Optimal Build</Button>
+            <Button
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className="cursor-pointer flex items-center space-x-2"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+              ) : null}
+              <span>
+                {isLoading ? "Loading..." : "Generate Optimal Build"}
+              </span>
+            </Button>
           </div>
         </CardContent>
       </Card>
