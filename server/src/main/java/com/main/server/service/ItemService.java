@@ -1,5 +1,6 @@
 package com.main.server.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,12 +41,27 @@ public class ItemService {
     data.fields().forEachRemaining(e -> {
       int id = Integer.parseInt(e.getKey());
       JsonNode node = e.getValue();
+      List<String> tags = new ArrayList<>();
+      JsonNode tagsNode = node.get("tags");
+      if (tagsNode != null && tagsNode.isArray()) {
+        for (JsonNode t : tagsNode) {
+          tags.add(t.asText());
+        }
+      }
+      List<Integer> into = new ArrayList<>();
+      if (node.has("into")) {
+        for (JsonNode intoId : node.get("into")) {
+          into.add(intoId.asInt());
+        }
+      }
       items.put(id, new ItemDto(
         id,
         node.get("name").asText(),
         node.get("description").asText(),
         node.get("gold").get("total").asInt(),
-        node.get("image").get("full").asText()
+        node.get("image").get("full").asText(),
+        tags,
+        into
       ));
     });
   }

@@ -57,6 +57,15 @@ export interface ItemDto {
   totalGold: number;
 }
 
+export interface OptimalItemDto {
+  id: number;
+  name: string;
+  description: string;
+  totalGold: number;
+  tags: string[];
+  imageFileName: string;
+}
+
 export interface PlayerBuild {
   matchId: string;
   puuid: string;

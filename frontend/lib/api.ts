@@ -1,4 +1,4 @@
-import type { Player, Match, RankInfoEntry, PlayerBuild, AnalyzeMatchRequest } from "./types"
+import type { Player, Match, RankInfoEntry, PlayerBuild, AnalyzeMatchRequest, ItemDto, OptimalItemDto } from "./types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const FLASK_API_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || "http://localhost:5000";
@@ -27,6 +27,18 @@ export async function getPlayerFromDb(puuid: string): Promise<Player> {
     tagLine: data.tag_line,
     profilePicture: data.profile_picture,
   };
+}
+
+
+export async function getOptimalBuild(champion: string): Promise<{
+  items: OptimalItemDto[];
+  ddragonVersion: string;
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/optimal-build?champion=${encodeURIComponent(champion)}`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch optimal build (${res.status})`);
+  }
+  return res.json();
 }
 
 export async function getBuildFromDb(matchId: string, puuid: string): Promise<PlayerBuild> {
