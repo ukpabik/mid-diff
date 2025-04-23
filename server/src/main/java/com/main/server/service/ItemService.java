@@ -1,123 +1,91 @@
 package com.main.server.service;
 
-import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import jakarta.annotation.PostConstruct;
-
-
-/**
- * Service class for loading Data Dragon metadata on application startup.
- */
 @Service
 public class ItemService {
-  private final Map<Integer, ItemDto> items = new ConcurrentHashMap<>();
+
+  // For caching items
+  private static final int MAX_CACHE_SIZE = 100;
+
+  private final RestTemplate rest;
   private String version;
-  private final TaskExecutor taskExecutor;
-  private final RestTemplateBuilder restBuilder;
 
+  @SuppressWarnings("serial")
+  private final Map<Integer,ItemDto> cache = Collections.synchronizedMap(
+    new LinkedHashMap<Integer,ItemDto>(16, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<Integer,ItemDto> eldest) {
+        return size() > MAX_CACHE_SIZE;
+      }
+    }
+  );
 
-
-  public ItemService(
-    TaskExecutor taskExecutor,
-    RestTemplateBuilder restBuilder
-  ) {
-    this.taskExecutor = taskExecutor;
-    this.restBuilder = restBuilder;
+  public ItemService(RestTemplateBuilder restBuilder) {
+    this.rest = restBuilder
+      .requestFactory(() -> {
+        var f = new SimpleClientHttpRequestFactory();
+        f.setConnectTimeout(2000);
+        f.setReadTimeout(5000);
+        return f;
+      })
+      .build();
   }
 
-
-  @PostConstruct
-  public void init() {
-    taskExecutor.execute(this::loadAllItemsInBackground);
+  // Gets the item and returns it if its not in map
+  public ItemDto getItem(int id) {
+    return cache.computeIfAbsent(id, this::fetchSingleItem);
   }
-  @SuppressWarnings("unchecked")
-  private void loadAllItemsInBackground() {
-    try {
-      RestTemplate rest = restBuilder
-        .requestFactory(() -> {
-          SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-          factory.setConnectTimeout((int) Duration.ofSeconds(2).toMillis());
-          factory.setReadTimeout((int) Duration.ofSeconds(5).toMillis());
-          return factory;
-        })
-        .build();
-
-      // fetch DDragon versions
+  
+  // Returns ddragon version
+  public synchronized String getVersion() {
+    if (version == null) {
+      @SuppressWarnings("unchecked")
       List<String> versions = rest.getForObject(
-        "https://ddragon.leagueoflegends.com/api/versions.json",
-        List.class
-      );
+        "https://ddragon.leagueoflegends.com/api/versions.json", List.class);
       if (versions == null || versions.isEmpty()) {
         throw new IllegalStateException("No DataDragon versions returned");
       }
       version = versions.get(0);
-
-      // fetch all items
-      String url = String.format(
-        "https://ddragon.leagueoflegends.com/cdn/%s/data/en_US/item.json",
-        version
-      );
-      JsonNode root = rest.getForObject(url, JsonNode.class);
-      JsonNode data = root.path("data");
-
-      // map each item into our DTO
-      data.fields().forEachRemaining(entry -> {
-        int id = Integer.parseInt(entry.getKey());
-        JsonNode node = entry.getValue();
-
-        // tags array
-        List<String> tags = new ArrayList<>();
-        JsonNode tagsNode = node.path("tags");
-        if (tagsNode.isArray()) {
-          tagsNode.forEach(t -> tags.add(t.asText()));
-        }
-
-        // into array (children) → used to detect end-tier items
-        List<Integer> into = new ArrayList<>();
-        JsonNode intoNode = node.path("into");
-        if (intoNode.isArray()) {
-          intoNode.forEach(n -> into.add(n.asInt()));
-        }
-
-        // build and store our DTO
-        items.put(id, new ItemDto(
-          id,
-          node.path("name").asText(),
-          node.path("description").asText(),
-          node.path("gold").path("total").asInt(),
-          node.path("image").path("full").asText(),
-          tags,
-          into
-        ));
-      });
-
-      System.out.println("✅ DataDragon metadata loaded: " + items.size() + " items.");
-
-    } catch (Exception e) {
-      System.err.println("⚠️ Failed to load DataDragon metadata: " + e.getMessage());
     }
-  }
-
-  /** Returns null if the ID isn’t known. */
-  public ItemDto getItem(int id) {
-    return items.get(id);
-  }
-
-  /** The version to build icon URLs. */
-  public String getVersion() {
     return version;
   }
-}
 
+  
+  private ItemDto fetchSingleItem(int id) {
+    String url = String.format(
+      "https://ddragon.leagueoflegends.com/cdn/%s/data/en_US/item/%d.json",
+      getVersion(), id
+    );
+    JsonNode dataNode = rest.getForObject(url, JsonNode.class)
+                           .path("data")
+                           .path(String.valueOf(id));
+
+    List<String> tags = new ArrayList<>();
+    dataNode.path("tags").forEach(t -> tags.add(t.asText()));
+
+    List<Integer> into = new ArrayList<>();
+    dataNode.path("into").forEach(n -> into.add(n.asInt()));
+
+    return new ItemDto(
+      id,
+      dataNode.path("name").asText(),
+      dataNode.path("description").asText(),
+      dataNode.path("gold").path("total").asInt(),
+      dataNode.path("image").path("full").asText(),
+      tags,
+      into
+    );
+  }
+}
