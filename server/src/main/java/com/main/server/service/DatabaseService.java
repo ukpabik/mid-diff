@@ -6,8 +6,6 @@ import org.springframework.stereotype.Service;
 import com.main.server.model.Player;
 import com.main.server.repository.PlayerRepository;
 
-import jakarta.annotation.PostConstruct;
-
 
 /**
  * Service layer responsible for interacting with the database layer
@@ -18,13 +16,6 @@ import jakarta.annotation.PostConstruct;
 public class DatabaseService {
   @Autowired
   private PlayerRepository playerRepository;
-
-  // Test to see if we connect to database (will remove later)
-  @PostConstruct
-  public void checkConnection() {
-    System.out.println("🔎 Testing DB connection...");
-    playerRepository.testConnection();
-  }
 
   /**
    * Saves a new player to the database.

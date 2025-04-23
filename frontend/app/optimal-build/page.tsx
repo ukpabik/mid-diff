@@ -148,7 +148,7 @@ export default function OptimalBuildPage() {
             ))}
           </div>
           <div className="flex justify-center">
-            <Button onClick={handleGenerate}>Generate Optimal Build</Button>
+            <Button className="cursor-pointer" onClick={handleGenerate}>Generate Optimal Build</Button>
           </div>
         </CardContent>
       </Card>

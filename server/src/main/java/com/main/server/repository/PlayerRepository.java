@@ -68,16 +68,6 @@ public class PlayerRepository {
 
 
 
-  // Function to test database connection
-  public boolean testConnection() {
-    try {
-      jdbcTemplate.execute("SELECT 1");
-      System.out.println("✅ Supabase connection is working.");
-      return true;
-    } catch (Exception e) {
-      System.err.println("❌ Supabase connection failed: " + e.getMessage());
-      return false;
-    }
-  }
+  
 
 }
