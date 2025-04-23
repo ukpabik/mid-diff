@@ -192,7 +192,7 @@ export default function OptimalBuildPage() {
             ))}
           </div>
         </div>
-        <div className="mt-10 mx-auto w-full max-w-4xl z-10">
+        <div className="mt-8 mx-auto w-full max-w-4xl z-10">
           <Card className="bg-gray-800">
             <CardHeader>
               <CardTitle className="text-white">Champion Pool</CardTitle>
