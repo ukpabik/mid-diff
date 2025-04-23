@@ -5,6 +5,7 @@ A full-stack League of Legends analytics tool that uses machine learning to anal
 ---
 
 ![image](https://github.com/user-attachments/assets/e6254f29-c2e4-44ac-a311-367d3bb57a09)
+![image](https://github.com/user-attachments/assets/e69ac69a-36c2-4011-9134-2b2a6016b204)
 
 
 ---
